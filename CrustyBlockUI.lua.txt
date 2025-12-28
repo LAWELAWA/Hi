@@ -1,0 +1,439 @@
+-- THAT CODE PUBLISHED BY CRUSTY HUB
+-- discord.gg/DBKxZQ8FmK
+
+local Players = game:GetService("Players") -- Crusty Hub discord.gg/DBKxZQ8FmK 1
+local LocalPlayer = Players.LocalPlayer -- Crusty Hub discord.gg/DBKxZQ8FmK 2
+local UserInputService = game:GetService("UserInputService") -- Crusty Hub discord.gg/DBKxZQ8FmK 3
+local StarterGui = game:GetService("StarterGui") -- Crusty Hub discord.gg/DBKxZQ8FmK 4
+local VirtualInputManager = game:GetService("VirtualInputManager") -- Crusty Hub discord.gg/DBKxZQ8FmK 5
+local BlockPlayersUIActive = false -- Crusty Hub discord.gg/DBKxZQ8FmK 6
+local BlockPlayersScreenGui = nil -- Crusty Hub discord.gg/DBKxZQ8FmK 7
+local function toggleBlockPlayersUI(Value) -- Crusty Hub discord.gg/DBKxZQ8FmK 8
+    BlockPlayersUIActive = Value -- Crusty Hub discord.gg/DBKxZQ8FmK 9
+    if Value then -- Crusty Hub discord.gg/DBKxZQ8FmK 10
+        local DEFAULT_SETTINGS = { -- Crusty Hub discord.gg/DBKxZQ8FmK 11
+            position = { -- Crusty Hub discord.gg/DBKxZQ8FmK 12
+                X_Scale = 0.5, -- Crusty Hub discord.gg/DBKxZQ8FmK 13
+                X_Offset = -170, -- Crusty Hub discord.gg/DBKxZQ8FmK 14
+                Y_Scale = 0.5, -- Crusty Hub discord.gg/DBKxZQ8FmK 15
+                Y_Offset = -230 -- Crusty Hub discord.gg/DBKxZQ8FmK 16
+            } -- Crusty Hub discord.gg/DBKxZQ8FmK 17
+        } -- Crusty Hub discord.gg/DBKxZQ8FmK 18
+        local currentSettings = { -- Crusty Hub discord.gg/DBKxZQ8FmK 19
+            position = DEFAULT_SETTINGS.position -- Crusty Hub discord.gg/DBKxZQ8FmK 20
+        } -- Crusty Hub discord.gg/DBKxZQ8FmK 21
+        local function saveSettings() -- Crusty Hub discord.gg/DBKxZQ8FmK 22
+            local success, err = pcall(function() -- Crusty Hub discord.gg/DBKxZQ8FmK 23
+                if not isfolder("CrustyHub") then -- Crusty Hub discord.gg/DBKxZQ8FmK 24
+                    makefolder("CrustyHub") -- Crusty Hub discord.gg/DBKxZQ8FmK 25
+                end -- Crusty Hub discord.gg/DBKxZQ8FmK 26
+                local json = game:GetService("HttpService"):JSONEncode(currentSettings) -- Crusty Hub discord.gg/DBKxZQ8FmK 27
+                writefile("CrustyHub/BlockPlayersUISettings.json", json) -- Crusty Hub discord.gg/DBKxZQ8FmK 28
+            end) -- Crusty Hub discord.gg/DBKxZQ8FmK 29
+        end -- Crusty Hub discord.gg/DBKxZQ8FmK 30
+        local function loadSettings() -- Crusty Hub discord.gg/DBKxZQ8FmK 31
+            local success, result = pcall(function() -- Crusty Hub discord.gg/DBKxZQ8FmK 32
+                if isfolder("CrustyHub") and isfile("CrustyHub/BlockPlayersUISettings.json") then -- Crusty Hub discord.gg/DBKxZQ8FmK 33
+                    local json = readfile("CrustyHub/BlockPlayersUISettings.json") -- Crusty Hub discord.gg/DBKxZQ8FmK 34
+                    return game:GetService("HttpService"):JSONDecode(json) -- Crusty Hub discord.gg/DBKxZQ8FmK 35
+                end -- Crusty Hub discord.gg/DBKxZQ8FmK 36
+                return nil -- Crusty Hub discord.gg/DBKxZQ8FmK 37
+            end) -- Crusty Hub discord.gg/DBKxZQ8FmK 38
+            if success and result then -- Crusty Hub discord.gg/DBKxZQ8FmK 39
+                if result.position then -- Crusty Hub discord.gg/DBKxZQ8FmK 40
+                    currentSettings.position = result.position -- Crusty Hub discord.gg/DBKxZQ8FmK 41
+                end -- Crusty Hub discord.gg/DBKxZQ8FmK 42
+                return true -- Crusty Hub discord.gg/DBKxZQ8FmK 43
+            end -- Crusty Hub discord.gg/DBKxZQ8FmK 44
+            return false -- Crusty Hub discord.gg/DBKxZQ8FmK 45
+        end -- Crusty Hub discord.gg/DBKxZQ8FmK 46
+        loadSettings() -- Crusty Hub discord.gg/DBKxZQ8FmK 47
+        local COLORS = { -- Crusty Hub discord.gg/DBKxZQ8FmK 48
+            background = Color3.fromRGB(15, 15, 18), -- Crusty Hub discord.gg/DBKxZQ8FmK 49
+            surface = Color3.fromRGB(22, 22, 26), -- Crusty Hub discord.gg/DBKxZQ8FmK 50
+            surface_hover = Color3.fromRGB(28, 28, 33), -- Crusty Hub discord.gg/DBKxZQ8FmK 51
+            border = Color3.fromRGB(40, 40, 48), -- Crusty Hub discord.gg/DBKxZQ8FmK 52
+            text_primary = Color3.fromRGB(245, 245, 250), -- Crusty Hub discord.gg/DBKxZQ8FmK 53
+            text_secondary = Color3.fromRGB(165, 165, 175), -- Crusty Hub discord.gg/DBKxZQ8FmK 54
+            text_muted = Color3.fromRGB(115, 115, 125), -- Crusty Hub discord.gg/DBKxZQ8FmK 55
+            accent = Color3.fromRGB(88, 101, 242), -- Crusty Hub discord.gg/DBKxZQ8FmK 56
+            accent_hover = Color3.fromRGB(108, 121, 255), -- Crusty Hub discord.gg/DBKxZQ8FmK 57
+            accent_dark = Color3.fromRGB(71, 82, 196), -- Crusty Hub discord.gg/DBKxZQ8FmK 58
+            danger = Color3.fromRGB(237, 66, 69), -- Crusty Hub discord.gg/DBKxZQ8FmK 59
+            danger_hover = Color3.fromRGB(255, 89, 92), -- Crusty Hub discord.gg/DBKxZQ8FmK 60
+            success = Color3.fromRGB(32, 186, 78), -- Crusty Hub discord.gg/DBKxZQ8FmK 61
+            warning = Color3.fromRGB(250, 166, 26), -- Crusty Hub discord.gg/DBKxZQ8FmK 62
+        } -- Crusty Hub discord.gg/DBKxZQ8FmK 63
+        local playerBlockedStatus = {} -- Crusty Hub discord.gg/DBKxZQ8FmK 64
+        local FRAME_WIDTH = 340 -- Crusty Hub discord.gg/DBKxZQ8FmK 65
+        local HEADER_HEIGHT = 56 -- Crusty Hub discord.gg/DBKxZQ8FmK 66
+        local ITEM_HEIGHT = 64 -- Crusty Hub discord.gg/DBKxZQ8FmK 67
+        local ITEM_PADDING = 8 -- Crusty Hub discord.gg/DBKxZQ8FmK 68
+        local MAX_VISIBLE_ITEMS = 6 -- Crusty Hub discord.gg/DBKxZQ8FmK 69
+        local PADDING = 16 -- Crusty Hub discord.gg/DBKxZQ8FmK 70
+        local function getViewportCenter() -- Crusty Hub discord.gg/DBKxZQ8FmK 71
+            local viewportSize = workspace.CurrentCamera.ViewportSize -- Crusty Hub discord.gg/DBKxZQ8FmK 72
+            return viewportSize.X / 2, (viewportSize.Y / 2) + 25 -- Crusty Hub discord.gg/DBKxZQ8FmK 73
+        end -- Crusty Hub discord.gg/DBKxZQ8FmK 74
+        local function clickInstant() -- Crusty Hub discord.gg/DBKxZQ8FmK 75
+            local centerX, centerY = getViewportCenter() -- Crusty Hub discord.gg/DBKxZQ8FmK 76
+            VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 1) -- Crusty Hub discord.gg/DBKxZQ8FmK 77
+            VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 1) -- Crusty Hub discord.gg/DBKxZQ8FmK 78
+        end -- Crusty Hub discord.gg/DBKxZQ8FmK 79
+        local function blockStable(targetPlayer) -- Crusty Hub discord.gg/DBKxZQ8FmK 80
+            if targetPlayer == LocalPlayer then return false end -- Crusty Hub discord.gg/DBKxZQ8FmK 81
+            local success = pcall(function() -- Crusty Hub discord.gg/DBKxZQ8FmK 82
+                StarterGui:SetCore("PromptBlockPlayer", targetPlayer) -- Crusty Hub discord.gg/DBKxZQ8FmK 83
+            end) -- Crusty Hub discord.gg/DBKxZQ8FmK 84
+            if success then -- Crusty Hub discord.gg/DBKxZQ8FmK 85
+                task.wait(0.1) -- Crusty Hub discord.gg/DBKxZQ8FmK 86
+                clickInstant() -- Crusty Hub discord.gg/DBKxZQ8FmK 87
+                task.wait(0.2) -- Crusty Hub discord.gg/DBKxZQ8FmK 88
+                return true -- Crusty Hub discord.gg/DBKxZQ8FmK 89
+            end -- Crusty Hub discord.gg/DBKxZQ8FmK 90
+            return false -- Crusty Hub discord.gg/DBKxZQ8FmK 91
+        end -- Crusty Hub discord.gg/DBKxZQ8FmK 92
+        BlockPlayersScreenGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui) -- Crusty Hub discord.gg/DBKxZQ8FmK 93
+        BlockPlayersScreenGui.Name = "CrustyBlockUI" -- Crusty Hub discord.gg/DBKxZQ8FmK 94
+        BlockPlayersScreenGui.ResetOnSpawn = false -- Crusty Hub discord.gg/DBKxZQ8FmK 95
+        BlockPlayersScreenGui.IgnoreGuiInset = true -- Crusty Hub discord.gg/DBKxZQ8FmK 96
+        BlockPlayersScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling -- Crusty Hub discord.gg/DBKxZQ8FmK 97
+        local mainFrame = Instance.new("Frame", BlockPlayersScreenGui) -- Crusty Hub discord.gg/DBKxZQ8FmK 98
+        mainFrame.Size = UDim2.new(0, FRAME_WIDTH, 0, 460) -- Crusty Hub discord.gg/DBKxZQ8FmK 99
+        mainFrame.Position = UDim2.new( -- Crusty Hub discord.gg/DBKxZQ8FmK 100
+            currentSettings.position.X_Scale, -- Crusty Hub discord.gg/DBKxZQ8FmK 101
+            currentSettings.position.X_Offset, -- Crusty Hub discord.gg/DBKxZQ8FmK 102
+            currentSettings.position.Y_Scale, -- Crusty Hub discord.gg/DBKxZQ8FmK 103
+            currentSettings.position.Y_Offset -- Crusty Hub discord.gg/DBKxZQ8FmK 104
+        ) -- Crusty Hub discord.gg/DBKxZQ8FmK 105
+        mainFrame.BackgroundColor3 = COLORS.background -- Crusty Hub discord.gg/DBKxZQ8FmK 106
+        mainFrame.Active = true -- Crusty Hub discord.gg/DBKxZQ8FmK 107
+        mainFrame.BorderSizePixel = 0 -- Crusty Hub discord.gg/DBKxZQ8FmK 108
+        local mainCorner = Instance.new("UICorner", mainFrame) -- Crusty Hub discord.gg/DBKxZQ8FmK 109
+        mainCorner.CornerRadius = UDim.new(0, 12) -- Crusty Hub discord.gg/DBKxZQ8FmK 110
+        local mainStroke = Instance.new("UIStroke", mainFrame) -- Crusty Hub discord.gg/DBKxZQ8FmK 111
+        mainStroke.Color = COLORS.border -- Crusty Hub discord.gg/DBKxZQ8FmK 112
+        mainStroke.Thickness = 1.5 -- Crusty Hub discord.gg/DBKxZQ8FmK 113
+        mainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border -- Crusty Hub discord.gg/DBKxZQ8FmK 114
+        local header = Instance.new("Frame", mainFrame) -- Crusty Hub discord.gg/DBKxZQ8FmK 115
+        header.Size = UDim2.new(1, 0, 0, HEADER_HEIGHT) -- Crusty Hub discord.gg/DBKxZQ8FmK 116
+        header.Position = UDim2.new(0, 0, 0, 0) -- Crusty Hub discord.gg/DBKxZQ8FmK 117
+        header.BackgroundColor3 = COLORS.surface -- Crusty Hub discord.gg/DBKxZQ8FmK 118
+        header.BorderSizePixel = 0 -- Crusty Hub discord.gg/DBKxZQ8FmK 119
+        header.Active = true -- Crusty Hub discord.gg/DBKxZQ8FmK 120
+        local headerCorner = Instance.new("UICorner", header) -- Crusty Hub discord.gg/DBKxZQ8FmK 121
+        headerCorner.CornerRadius = UDim.new(0, 12) -- Crusty Hub discord.gg/DBKxZQ8FmK 122
+        local headerBorder = Instance.new("Frame", header) -- Crusty Hub discord.gg/DBKxZQ8FmK 123
+        headerBorder.Size = UDim2.new(1, 0, 0, 12) -- Crusty Hub discord.gg/DBKxZQ8FmK 124
+        headerBorder.Position = UDim2.new(0, 0, 1, -12) -- Crusty Hub discord.gg/DBKxZQ8FmK 125
+        headerBorder.BackgroundColor3 = COLORS.surface -- Crusty Hub discord.gg/DBKxZQ8FmK 126
+        headerBorder.BorderSizePixel = 0 -- Crusty Hub discord.gg/DBKxZQ8FmK 127
+        local title = Instance.new("TextLabel", header) -- Crusty Hub discord.gg/DBKxZQ8FmK 128
+        title.Size = UDim2.new(1, -90, 1, 0) -- Crusty Hub discord.gg/DBKxZQ8FmK 129
+        title.Position = UDim2.new(0, PADDING, 0, 0) -- Crusty Hub discord.gg/DBKxZQ8FmK 130
+        title.BackgroundTransparency = 1 -- Crusty Hub discord.gg/DBKxZQ8FmK 131
+        title.Text = "Block Players" -- Crusty Hub discord.gg/DBKxZQ8FmK 132
+        title.Font = Enum.Font.GothamBold -- Crusty Hub discord.gg/DBKxZQ8FmK 133
+        title.TextColor3 = COLORS.text_primary -- Crusty Hub discord.gg/DBKxZQ8FmK 134
+        title.TextXAlignment = Enum.TextXAlignment.Left -- Crusty Hub discord.gg/DBKxZQ8FmK 135
+        title.TextSize = 20 -- Crusty Hub discord.gg/DBKxZQ8FmK 136
+        local playerCount = Instance.new("TextLabel", mainFrame) -- Crusty Hub discord.gg/DBKxZQ8FmK 137
+        playerCount.Size = UDim2.new(1, -2*PADDING, 0, 36) -- Crusty Hub discord.gg/DBKxZQ8FmK 138
+        playerCount.Position = UDim2.new(0, PADDING, 0, HEADER_HEIGHT + 8) -- Crusty Hub discord.gg/DBKxZQ8FmK 139
+        playerCount.BackgroundTransparency = 1 -- Crusty Hub discord.gg/DBKxZQ8FmK 140
+        playerCount.Text = "0 players online" -- Crusty Hub discord.gg/DBKxZQ8FmK 141
+        playerCount.Font = Enum.Font.Gotham -- Crusty Hub discord.gg/DBKxZQ8FmK 142
+        playerCount.TextColor3 = COLORS.text_secondary -- Crusty Hub discord.gg/DBKxZQ8FmK 143
+        playerCount.TextXAlignment = Enum.TextXAlignment.Left -- Crusty Hub discord.gg/DBKxZQ8FmK 144
+        playerCount.TextSize = 12 -- Crusty Hub discord.gg/DBKxZQ8FmK 145
+        local listYPosition = HEADER_HEIGHT + 48 -- Crusty Hub discord.gg/DBKxZQ8FmK 146
+        local listFrame = Instance.new("ScrollingFrame", mainFrame) -- Crusty Hub discord.gg/DBKxZQ8FmK 147
+        listFrame.Size = UDim2.new(1, -2*PADDING, 0, 0) -- Crusty Hub discord.gg/DBKxZQ8FmK 148
+        listFrame.Position = UDim2.new(0, PADDING, 0, listYPosition) -- Crusty Hub discord.gg/DBKxZQ8FmK 149
+        listFrame.BackgroundColor3 = COLORS.surface -- Crusty Hub discord.gg/DBKxZQ8FmK 150
+        listFrame.BorderSizePixel = 0 -- Crusty Hub discord.gg/DBKxZQ8FmK 151
+        listFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- Crusty Hub discord.gg/DBKxZQ8FmK 152
+        listFrame.ScrollBarThickness = 4 -- Crusty Hub discord.gg/DBKxZQ8FmK 153
+        listFrame.ScrollBarImageColor3 = COLORS.accent -- Crusty Hub discord.gg/DBKxZQ8FmK 154
+        listFrame.ScrollBarImageTransparency = 0.3 -- Crusty Hub discord.gg/DBKxZQ8FmK 155
+        local listCorner = Instance.new("UICorner", listFrame) -- Crusty Hub discord.gg/DBKxZQ8FmK 156
+        listCorner.CornerRadius = UDim.new(0, 10) -- Crusty Hub discord.gg/DBKxZQ8FmK 157
+        local listLayout = Instance.new("UIListLayout", listFrame) -- Crusty Hub discord.gg/DBKxZQ8FmK 158
+        listLayout.FillDirection = Enum.FillDirection.Vertical -- Crusty Hub discord.gg/DBKxZQ8FmK 159
+        listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center -- Crusty Hub discord.gg/DBKxZQ8FmK 160
+        listLayout.VerticalAlignment = Enum.VerticalAlignment.Top -- Crusty Hub discord.gg/DBKxZQ8FmK 161
+        listLayout.Padding = UDim.new(0, ITEM_PADDING) -- Crusty Hub discord.gg/DBKxZQ8FmK 162
+        listLayout.SortOrder = Enum.SortOrder.LayoutOrder -- Crusty Hub discord.gg/DBKxZQ8FmK 163
+        local listPadding = Instance.new("UIPadding", listFrame) -- Crusty Hub discord.gg/DBKxZQ8FmK 164
+        listPadding.PaddingTop = UDim.new(0, 10) -- Crusty Hub discord.gg/DBKxZQ8FmK 165
+        listPadding.PaddingBottom = UDim.new(0, 10) -- Crusty Hub discord.gg/DBKxZQ8FmK 166
+        listPadding.PaddingLeft = UDim.new(0, 10) -- Crusty Hub discord.gg/DBKxZQ8FmK 167
+        listPadding.PaddingRight = UDim.new(0, 10) -- Crusty Hub discord.gg/DBKxZQ8FmK 168
+        local blockAllBtn = Instance.new("TextButton", mainFrame) -- Crusty Hub discord.gg/DBKxZQ8FmK 169
+        blockAllBtn.Size = UDim2.new(1, -2*PADDING, 0, 46) -- Crusty Hub discord.gg/DBKxZQ8FmK 170
+        blockAllBtn.Position = UDim2.new(0, PADDING, 1, -46 - PADDING) -- Crusty Hub discord.gg/DBKxZQ8FmK 171
+        blockAllBtn.BackgroundColor3 = COLORS.accent -- Crusty Hub discord.gg/DBKxZQ8FmK 172
+        blockAllBtn.Text = "Block All Players" -- Crusty Hub discord.gg/DBKxZQ8FmK 173
+        blockAllBtn.TextColor3 = COLORS.text_primary -- Crusty Hub discord.gg/DBKxZQ8FmK 174
+        blockAllBtn.Font = Enum.Font.GothamBold -- Crusty Hub discord.gg/DBKxZQ8FmK 175
+        blockAllBtn.TextSize = 14 -- Crusty Hub discord.gg/DBKxZQ8FmK 176
+        blockAllBtn.BorderSizePixel = 0 -- Crusty Hub discord.gg/DBKxZQ8FmK 177
+        blockAllBtn.AutoButtonColor = false -- Crusty Hub discord.gg/DBKxZQ8FmK 178
+        local btnCorner = Instance.new("UICorner", blockAllBtn) -- Crusty Hub discord.gg/DBKxZQ8FmK 179
+        btnCorner.CornerRadius = UDim.new(0, 10) -- Crusty Hub discord.gg/DBKxZQ8FmK 180
+        blockAllBtn.MouseEnter:Connect(function() -- Crusty Hub discord.gg/DBKxZQ8FmK 181
+            if blockAllBtn.Active then -- Crusty Hub discord.gg/DBKxZQ8FmK 182
+                blockAllBtn.BackgroundColor3 = COLORS.accent_hover -- Crusty Hub discord.gg/DBKxZQ8FmK 183
+            end -- Crusty Hub discord.gg/DBKxZQ8FmK 184
+        end) -- Crusty Hub discord.gg/DBKxZQ8FmK 185
+        blockAllBtn.MouseLeave:Connect(function() -- Crusty Hub discord.gg/DBKxZQ8FmK 186
+            if blockAllBtn.Active then -- Crusty Hub discord.gg/DBKxZQ8FmK 187
+                blockAllBtn.BackgroundColor3 = COLORS.accent -- Crusty Hub discord.gg/DBKxZQ8FmK 188
+            end -- Crusty Hub discord.gg/DBKxZQ8FmK 189
+        end) -- Crusty Hub discord.gg/DBKxZQ8FmK 190
+        local function blockAllPlayers() -- Crusty Hub discord.gg/DBKxZQ8FmK 191
+            blockAllBtn.Text = "Blocking players..." -- Crusty Hub discord.gg/DBKxZQ8FmK 192
+            blockAllBtn.BackgroundColor3 = COLORS.warning -- Crusty Hub discord.gg/DBKxZQ8FmK 193
+            blockAllBtn.Active = false -- Crusty Hub discord.gg/DBKxZQ8FmK 194
+            task.spawn(function() -- Crusty Hub discord.gg/DBKxZQ8FmK 195
+                local blockedCount = 0 -- Crusty Hub discord.gg/DBKxZQ8FmK 196
+                local playerList = Players:GetPlayers() -- Crusty Hub discord.gg/DBKxZQ8FmK 197
+                local totalPlayers = 0 -- Crusty Hub discord.gg/DBKxZQ8FmK 198
+                for _, p in ipairs(playerList) do -- Crusty Hub discord.gg/DBKxZQ8FmK 199
+                    if p ~= LocalPlayer then -- Crusty Hub discord.gg/DBKxZQ8FmK 200
+                        totalPlayers = totalPlayers + 1 -- Crusty Hub discord.gg/DBKxZQ8FmK 201
+                    end -- Crusty Hub discord.gg/DBKxZQ8FmK 202
+                end -- Crusty Hub discord.gg/DBKxZQ8FmK 203
+                for _, targetPlayer in ipairs(playerList) do -- Crusty Hub discord.gg/DBKxZQ8FmK 204
+                    if targetPlayer ~= LocalPlayer then -- Crusty Hub discord.gg/DBKxZQ8FmK 205
+                        local success = blockStable(targetPlayer) -- Crusty Hub discord.gg/DBKxZQ8FmK 206
+                        if success then -- Crusty Hub discord.gg/DBKxZQ8FmK 207
+                            blockedCount = blockedCount + 1 -- Crusty Hub discord.gg/DBKxZQ8FmK 208
+                            playerBlockedStatus[targetPlayer.UserId] = os.time() -- Crusty Hub discord.gg/DBKxZQ8FmK 209
+                            blockAllBtn.Text = "Blocking... " .. blockedCount .. "/" .. totalPlayers -- Crusty Hub discord.gg/DBKxZQ8FmK 210
+                        end -- Crusty Hub discord.gg/DBKxZQ8FmK 211
+                        task.wait(0.05) -- Crusty Hub discord.gg/DBKxZQ8FmK 212
+                    end -- Crusty Hub discord.gg/DBKxZQ8FmK 213
+                end -- Crusty Hub discord.gg/DBKxZQ8FmK 214
+                blockAllBtn.Text = "✓ Blocked " .. blockedCount .. " players" -- Crusty Hub discord.gg/DBKxZQ8FmK 215
+                blockAllBtn.BackgroundColor3 = COLORS.success -- Crusty Hub discord.gg/DBKxZQ8FmK 216
+                task.wait(2.5) -- Crusty Hub discord.gg/DBKxZQ8FmK 217
+                blockAllBtn.Text = "Block All Players" -- Crusty Hub discord.gg/DBKxZQ8FmK 218
+                blockAllBtn.BackgroundColor3 = COLORS.accent -- Crusty Hub discord.gg/DBKxZQ8FmK 219
+                blockAllBtn.Active = true -- Crusty Hub discord.gg/DBKxZQ8FmK 220
+            end) -- Crusty Hub discord.gg/DBKxZQ8FmK 221
+        end -- Crusty Hub discord.gg/DBKxZQ8FmK 222
+        blockAllBtn.MouseButton1Click:Connect(blockAllPlayers) -- Crusty Hub discord.gg/DBKxZQ8FmK 223
+        local function updatePlayerList() -- Crusty Hub discord.gg/DBKxZQ8FmK 224
+            for _, item in ipairs(listFrame:GetChildren()) do -- Crusty Hub discord.gg/DBKxZQ8FmK 225
+                if item:IsA("Frame") then -- Crusty Hub discord.gg/DBKxZQ8FmK 226
+                    item:Destroy() -- Crusty Hub discord.gg/DBKxZQ8FmK 227
+                end -- Crusty Hub discord.gg/DBKxZQ8FmK 228
+            end -- Crusty Hub discord.gg/DBKxZQ8FmK 229
+            local pCount = 0 -- Crusty Hub discord.gg/DBKxZQ8FmK 230
+            local currentTime = os.time() -- Crusty Hub discord.gg/DBKxZQ8FmK 231
+            for _, targetPlayer in ipairs(Players:GetPlayers()) do -- Crusty Hub discord.gg/DBKxZQ8FmK 232
+                if targetPlayer ~= LocalPlayer then -- Crusty Hub discord.gg/DBKxZQ8FmK 233
+                    pCount = pCount + 1 -- Crusty Hub discord.gg/DBKxZQ8FmK 234
+                    local entry = Instance.new("Frame") -- Crusty Hub discord.gg/DBKxZQ8FmK 235
+                    entry.Size = UDim2.new(1, -20, 0, ITEM_HEIGHT) -- Crusty Hub discord.gg/DBKxZQ8FmK 236
+                    entry.BackgroundColor3 = COLORS.background -- Crusty Hub discord.gg/DBKxZQ8FmK 237
+                    entry.BorderSizePixel = 0 -- Crusty Hub discord.gg/DBKxZQ8FmK 238
+                    entry.Parent = listFrame -- Crusty Hub discord.gg/DBKxZQ8FmK 239
+                    local entryCorner = Instance.new("UICorner", entry) -- Crusty Hub discord.gg/DBKxZQ8FmK 240
+                    entryCorner.CornerRadius = UDim.new(0, 8) -- Crusty Hub discord.gg/DBKxZQ8FmK 241
+                    local entryStroke = Instance.new("UIStroke", entry) -- Crusty Hub discord.gg/DBKxZQ8FmK 242
+                    entryStroke.Color = COLORS.border -- Crusty Hub discord.gg/DBKxZQ8FmK 243
+                    entryStroke.Thickness = 1 -- Crusty Hub discord.gg/DBKxZQ8FmK 244
+                    entryStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border -- Crusty Hub discord.gg/DBKxZQ8FmK 245
+                    entryStroke.Transparency = 0.5 -- Crusty Hub discord.gg/DBKxZQ8FmK 246
+                    local avatar = Instance.new("ImageLabel", entry) -- Crusty Hub discord.gg/DBKxZQ8FmK 247
+                    avatar.Size = UDim2.new(0, 44, 0, 44) -- Crusty Hub discord.gg/DBKxZQ8FmK 248
+                    avatar.Position = UDim2.new(0, 10, 0.5, -22) -- Crusty Hub discord.gg/DBKxZQ8FmK 249
+                    avatar.BackgroundColor3 = COLORS.surface -- Crusty Hub discord.gg/DBKxZQ8FmK 250
+                    avatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. targetPlayer.UserId .. "&w=150&h=150" -- Crusty Hub discord.gg/DBKxZQ8FmK 251
+                    avatar.BorderSizePixel = 0 -- Crusty Hub discord.gg/DBKxZQ8FmK 252
+                    local avatarCorner = Instance.new("UICorner", avatar) -- Crusty Hub discord.gg/DBKxZQ8FmK 253
+                    avatarCorner.CornerRadius = UDim.new(1, 0) -- Crusty Hub discord.gg/DBKxZQ8FmK 254
+                    local avatarStroke = Instance.new("UIStroke", avatar) -- Crusty Hub discord.gg/DBKxZQ8FmK 255
+                    avatarStroke.Color = COLORS.border -- Crusty Hub discord.gg/DBKxZQ8FmK 256
+                    avatarStroke.Thickness = 2 -- Crusty Hub discord.gg/DBKxZQ8FmK 257
+                    avatarStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border -- Crusty Hub discord.gg/DBKxZQ8FmK 258
+                    local nameLabel = Instance.new("TextLabel", entry) -- Crusty Hub discord.gg/DBKxZQ8FmK 259
+                    nameLabel.Size = UDim2.new(0, 160, 0, 20) -- Crusty Hub discord.gg/DBKxZQ8FmK 260
+                    nameLabel.Position = UDim2.new(0, 62, 0, 14) -- Crusty Hub discord.gg/DBKxZQ8FmK 261
+                    nameLabel.BackgroundTransparency = 1 -- Crusty Hub discord.gg/DBKxZQ8FmK 262
+                    nameLabel.Text = targetPlayer.DisplayName -- Crusty Hub discord.gg/DBKxZQ8FmK 263
+                    nameLabel.Font = Enum.Font.GothamBold -- Crusty Hub discord.gg/DBKxZQ8FmK 264
+                    nameLabel.TextColor3 = COLORS.text_primary -- Crusty Hub discord.gg/DBKxZQ8FmK 265
+                    nameLabel.TextXAlignment = Enum.TextXAlignment.Left -- Crusty Hub discord.gg/DBKxZQ8FmK 266
+                    nameLabel.TextSize = 13 -- Crusty Hub discord.gg/DBKxZQ8FmK 267
+                    nameLabel.TextTruncate = Enum.TextTruncate.AtEnd -- Crusty Hub discord.gg/DBKxZQ8FmK 268
+                    local usernameLabel = Instance.new("TextLabel", entry) -- Crusty Hub discord.gg/DBKxZQ8FmK 269
+                    usernameLabel.Size = UDim2.new(0, 160, 0, 16) -- Crusty Hub discord.gg/DBKxZQ8FmK 270
+                    usernameLabel.Position = UDim2.new(0, 62, 0, 32) -- Crusty Hub discord.gg/DBKxZQ8FmK 271
+                    usernameLabel.BackgroundTransparency = 1 -- Crusty Hub discord.gg/DBKxZQ8FmK 272
+                    usernameLabel.Text = "@" .. targetPlayer.Name -- Crusty Hub discord.gg/DBKxZQ8FmK 273
+                    usernameLabel.Font = Enum.Font.Gotham -- Crusty Hub discord.gg/DBKxZQ8FmK 274
+                    usernameLabel.TextColor3 = COLORS.text_muted -- Crusty Hub discord.gg/DBKxZQ8FmK 275
+                    usernameLabel.TextXAlignment = Enum.TextXAlignment.Left -- Crusty Hub discord.gg/DBKxZQ8FmK 276
+                    usernameLabel.TextSize = 11 -- Crusty Hub discord.gg/DBKxZQ8FmK 277
+                    usernameLabel.TextTruncate = Enum.TextTruncate.AtEnd -- Crusty Hub discord.gg/DBKxZQ8FmK 278
+                    local blockBtn = Instance.new("TextButton", entry) -- Crusty Hub discord.gg/DBKxZQ8FmK 279
+                    blockBtn.Size = UDim2.new(0, 72, 0, 32) -- Crusty Hub discord.gg/DBKxZQ8FmK 280
+                    blockBtn.Position = UDim2.new(1, -82, 0.5, -16) -- Crusty Hub discord.gg/DBKxZQ8FmK 281
+                    blockBtn.BackgroundColor3 = COLORS.danger -- Crusty Hub discord.gg/DBKxZQ8FmK 282
+                    blockBtn.Text = "Block" -- Crusty Hub discord.gg/DBKxZQ8FmK 283
+                    blockBtn.TextColor3 = COLORS.text_primary -- Crusty Hub discord.gg/DBKxZQ8FmK 284
+                    blockBtn.Font = Enum.Font.GothamBold -- Crusty Hub discord.gg/DBKxZQ8FmK 285
+                    blockBtn.TextSize = 12 -- Crusty Hub discord.gg/DBKxZQ8FmK 286
+                    blockBtn.BorderSizePixel = 0 -- Crusty Hub discord.gg/DBKxZQ8FmK 287
+                    blockBtn.AutoButtonColor = false -- Crusty Hub discord.gg/DBKxZQ8FmK 288
+                    local blockBtnCorner = Instance.new("UICorner", blockBtn) -- Crusty Hub discord.gg/DBKxZQ8FmK 289
+                    blockBtnCorner.CornerRadius = UDim.new(0, 6) -- Crusty Hub discord.gg/DBKxZQ8FmK 290
+                    local blockedTime = playerBlockedStatus[targetPlayer.UserId] -- Crusty Hub discord.gg/DBKxZQ8FmK 291
+                    if blockedTime and (currentTime - blockedTime) < 5 then -- Crusty Hub discord.gg/DBKxZQ8FmK 292
+                        blockBtn.Text = "✓" -- Crusty Hub discord.gg/DBKxZQ8FmK 293
+                        blockBtn.BackgroundColor3 = COLORS.success -- Crusty Hub discord.gg/DBKxZQ8FmK 294
+                        blockBtn.Active = false -- Crusty Hub discord.gg/DBKxZQ8FmK 295
+                    else -- Crusty Hub discord.gg/DBKxZQ8FmK 296
+                        playerBlockedStatus[targetPlayer.UserId] = nil -- Crusty Hub discord.gg/DBKxZQ8FmK 297
+                    end -- Crusty Hub discord.gg/DBKxZQ8FmK 298
+                    blockBtn.MouseEnter:Connect(function() -- Crusty Hub discord.gg/DBKxZQ8FmK 299
+                        if blockBtn.Active and blockBtn.Text == "Block" then -- Crusty Hub discord.gg/DBKxZQ8FmK 300
+                            blockBtn.BackgroundColor3 = COLORS.danger_hover -- Crusty Hub discord.gg/DBKxZQ8FmK 301
+                        end -- Crusty Hub discord.gg/DBKxZQ8FmK 302
+                    end) -- Crusty Hub discord.gg/DBKxZQ8FmK 303
+                    blockBtn.MouseLeave:Connect(function() -- Crusty Hub discord.gg/DBKxZQ8FmK 304
+                        if blockBtn.Active and blockBtn.Text == "Block" then -- Crusty Hub discord.gg/DBKxZQ8FmK 305
+                            blockBtn.BackgroundColor3 = COLORS.danger -- Crusty Hub discord.gg/DBKxZQ8FmK 306
+                        end -- Crusty Hub discord.gg/DBKxZQ8FmK 307
+                    end) -- Crusty Hub discord.gg/DBKxZQ8FmK 308
+                    blockBtn.MouseButton1Click:Connect(function() -- Crusty Hub discord.gg/DBKxZQ8FmK 309
+                        if not blockBtn.Active or blockBtn.Text ~= "Block" then return end -- Crusty Hub discord.gg/DBKxZQ8FmK 310
+                        blockBtn.Text = "..." -- Crusty Hub discord.gg/DBKxZQ8FmK 311
+                        blockBtn.BackgroundColor3 = COLORS.warning -- Crusty Hub discord.gg/DBKxZQ8FmK 312
+                        local success = blockStable(targetPlayer) -- Crusty Hub discord.gg/DBKxZQ8FmK 313
+                        if success then -- Crusty Hub discord.gg/DBKxZQ8FmK 314
+                            blockBtn.Text = "✓" -- Crusty Hub discord.gg/DBKxZQ8FmK 315
+                            blockBtn.BackgroundColor3 = COLORS.success -- Crusty Hub discord.gg/DBKxZQ8FmK 316
+                            blockBtn.Active = false -- Crusty Hub discord.gg/DBKxZQ8FmK 317
+                            playerBlockedStatus[targetPlayer.UserId] = os.time() -- Crusty Hub discord.gg/DBKxZQ8FmK 318
+                            task.delay(5, function() -- Crusty Hub discord.gg/DBKxZQ8FmK 319
+                                if playerBlockedStatus[targetPlayer.UserId] then -- Crusty Hub discord.gg/DBKxZQ8FmK 320
+                                    playerBlockedStatus[targetPlayer.UserId] = nil -- Crusty Hub discord.gg/DBKxZQ8FmK 321
+                                end -- Crusty Hub discord.gg/DBKxZQ8FmK 322
+                            end) -- Crusty Hub discord.gg/DBKxZQ8FmK 323
+                        else -- Crusty Hub discord.gg/DBKxZQ8FmK 324
+                            blockBtn.Text = "Block" -- Crusty Hub discord.gg/DBKxZQ8FmK 325
+                            blockBtn.BackgroundColor3 = COLORS.danger -- Crusty Hub discord.gg/DBKxZQ8FmK 326
+                        end -- Crusty Hub discord.gg/DBKxZQ8FmK 327
+                    end) -- Crusty Hub discord.gg/DBKxZQ8FmK 328
+                end -- Crusty Hub discord.gg/DBKxZQ8FmK 329
+            end -- Crusty Hub discord.gg/DBKxZQ8FmK 330
+            playerCount.Text = pCount .. " player" .. (pCount == 1 and "" or "s") .. " online" -- Crusty Hub discord.gg/DBKxZQ8FmK 331
+            local totalItemHeight = pCount * (ITEM_HEIGHT + ITEM_PADDING) + 20 -- Crusty Hub discord.gg/DBKxZQ8FmK 332
+            local listHeight = math.min(totalItemHeight, MAX_VISIBLE_ITEMS * (ITEM_HEIGHT + ITEM_PADDING)) -- Crusty Hub discord.gg/DBKxZQ8FmK 333
+            listFrame.Size = UDim2.new(1, -2*PADDING, 0, listHeight) -- Crusty Hub discord.gg/DBKxZQ8FmK 334
+            listFrame.CanvasSize = UDim2.new(0, 0, 0, totalItemHeight) -- Crusty Hub discord.gg/DBKxZQ8FmK 335
+            local newFrameHeight = listYPosition + listHeight + 46 + PADDING * 2 -- Crusty Hub discord.gg/DBKxZQ8FmK 336
+            mainFrame.Size = UDim2.new(0, FRAME_WIDTH, 0, newFrameHeight) -- Crusty Hub discord.gg/DBKxZQ8FmK 337
+            blockAllBtn.Position = UDim2.new(0, PADDING, 1, -46 - PADDING) -- Crusty Hub discord.gg/DBKxZQ8FmK 338
+        end -- Crusty Hub discord.gg/DBKxZQ8FmK 339
+        local playerAddedConnection = Players.PlayerAdded:Connect(function(newPlayer) -- Crusty Hub discord.gg/DBKxZQ8FmK 340
+            if BlockPlayersUIActive and BlockPlayersScreenGui and BlockPlayersScreenGui.Parent then -- Crusty Hub discord.gg/DBKxZQ8FmK 341
+                task.wait(0.5) -- Crusty Hub discord.gg/DBKxZQ8FmK 342
+                updatePlayerList() -- Crusty Hub discord.gg/DBKxZQ8FmK 343
+            end -- Crusty Hub discord.gg/DBKxZQ8FmK 344
+        end) -- Crusty Hub discord.gg/DBKxZQ8FmK 345
+        local playerRemovingConnection = Players.PlayerRemoving:Connect(function(leavingPlayer) -- Crusty Hub discord.gg/DBKxZQ8FmK 346
+            if BlockPlayersUIActive and BlockPlayersScreenGui and BlockPlayersScreenGui.Parent then -- Crusty Hub discord.gg/DBKxZQ8FmK 347
+                task.wait(0.2) -- Crusty Hub discord.gg/DBKxZQ8FmK 348
+                updatePlayerList() -- Crusty Hub discord.gg/DBKxZQ8FmK 349
+            end -- Crusty Hub discord.gg/DBKxZQ8FmK 350
+        end) -- Crusty Hub discord.gg/DBKxZQ8FmK 351
+        task.spawn(function() -- Crusty Hub discord.gg/DBKxZQ8FmK 352
+            while task.wait(5) do -- Crusty Hub discord.gg/DBKxZQ8FmK 353
+                if BlockPlayersUIActive and BlockPlayersScreenGui and BlockPlayersScreenGui.Parent then -- Crusty Hub discord.gg/DBKxZQ8FmK 354
+                    updatePlayerList() -- Crusty Hub discord.gg/DBKxZQ8FmK 355
+                else -- Crusty Hub discord.gg/DBKxZQ8FmK 356
+                    if playerAddedConnection then -- Crusty Hub discord.gg/DBKxZQ8FmK 357
+                        playerAddedConnection:Disconnect() -- Crusty Hub discord.gg/DBKxZQ8FmK 358
+                    end -- Crusty Hub discord.gg/DBKxZQ8FmK 359
+                    if playerRemovingConnection then -- Crusty Hub discord.gg/DBKxZQ8FmK 360
+                        playerRemovingConnection:Disconnect() -- Crusty Hub discord.gg/DBKxZQ8FmK 361
+                    end -- Crusty Hub discord.gg/DBKxZQ8FmK 362
+                    break -- Crusty Hub discord.gg/DBKxZQ8FmK 363
+                end -- Crusty Hub discord.gg/DBKxZQ8FmK 364
+            end -- Crusty Hub discord.gg/DBKxZQ8FmK 365
+        end) -- Crusty Hub discord.gg/DBKxZQ8FmK 366
+        local dragging = false -- Crusty Hub discord.gg/DBKxZQ8FmK 367
+        local dragInput -- Crusty Hub discord.gg/DBKxZQ8FmK 368
+        local dragStart -- Crusty Hub discord.gg/DBKxZQ8FmK 369
+        local startPos -- Crusty Hub discord.gg/DBKxZQ8FmK 370
+        local function update(input) -- Crusty Hub discord.gg/DBKxZQ8FmK 371
+            local delta = input.Position - dragStart -- Crusty Hub discord.gg/DBKxZQ8FmK 372
+            mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) -- Crusty Hub discord.gg/DBKxZQ8FmK 373
+        end -- Crusty Hub discord.gg/DBKxZQ8FmK 374
+        header.InputBegan:Connect(function(input) -- Crusty Hub discord.gg/DBKxZQ8FmK 375
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then -- Crusty Hub discord.gg/DBKxZQ8FmK 376
+                dragging = true -- Crusty Hub discord.gg/DBKxZQ8FmK 377
+                dragStart = input.Position -- Crusty Hub discord.gg/DBKxZQ8FmK 378
+                startPos = mainFrame.Position -- Crusty Hub discord.gg/DBKxZQ8FmK 379
+                input.Changed:Connect(function() -- Crusty Hub discord.gg/DBKxZQ8FmK 380
+                    if input.UserInputState == Enum.UserInputState.End then -- Crusty Hub discord.gg/DBKxZQ8FmK 381
+                        dragging = false -- Crusty Hub discord.gg/DBKxZQ8FmK 382
+                        currentSettings.position = { -- Crusty Hub discord.gg/DBKxZQ8FmK 383
+                            X_Scale = mainFrame.Position.X.Scale, -- Crusty Hub discord.gg/DBKxZQ8FmK 384
+                            X_Offset = mainFrame.Position.X.Offset, -- Crusty Hub discord.gg/DBKxZQ8FmK 385
+                            Y_Scale = mainFrame.Position.Y.Scale, -- Crusty Hub discord.gg/DBKxZQ8FmK 386
+                            Y_Offset = mainFrame.Position.Y.Offset -- Crusty Hub discord.gg/DBKxZQ8FmK 387
+                        } -- Crusty Hub discord.gg/DBKxZQ8FmK 388
+                        saveSettings() -- Crusty Hub discord.gg/DBKxZQ8FmK 389
+                    end -- Crusty Hub discord.gg/DBKxZQ8FmK 390
+                end) -- Crusty Hub discord.gg/DBKxZQ8FmK 391
+            end -- Crusty Hub discord.gg/DBKxZQ8FmK 392
+        end) -- Crusty Hub discord.gg/DBKxZQ8FmK 393
+        header.InputChanged:Connect(function(input) -- Crusty Hub discord.gg/DBKxZQ8FmK 394
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then -- Crusty Hub discord.gg/DBKxZQ8FmK 395
+                dragInput = input -- Crusty Hub discord.gg/DBKxZQ8FmK 396
+            end -- Crusty Hub discord.gg/DBKxZQ8FmK 397
+        end) -- Crusty Hub discord.gg/DBKxZQ8FmK 398
+        UserInputService.InputChanged:Connect(function(input) -- Crusty Hub discord.gg/DBKxZQ8FmK 399
+            if input == dragInput and dragging then -- Crusty Hub discord.gg/DBKxZQ8FmK 400
+                update(input) -- Crusty Hub discord.gg/DBKxZQ8FmK 401
+            end -- Crusty Hub discord.gg/DBKxZQ8FmK 402
+        end) -- Crusty Hub discord.gg/DBKxZQ8FmK 403
+        updatePlayerList() -- Crusty Hub discord.gg/DBKxZQ8FmK 404
+        print("Block Players UI Enabled!") -- Crusty Hub discord.gg/DBKxZQ8FmK 405
+    else -- Crusty Hub discord.gg/DBKxZQ8FmK 406
+        if BlockPlayersScreenGui then -- Crusty Hub discord.gg/DBKxZQ8FmK 407
+            BlockPlayersScreenGui:Destroy() -- Crusty Hub discord.gg/DBKxZQ8FmK 408
+            BlockPlayersScreenGui = nil -- Crusty Hub discord.gg/DBKxZQ8FmK 409
+        end -- Crusty Hub discord.gg/DBKxZQ8FmK 410
+        print("Block Players UI Disabled!") -- Crusty Hub discord.gg/DBKxZQ8FmK 411
+    end -- Crusty Hub discord.gg/DBKxZQ8FmK 412
+end -- Crusty Hub discord.gg/DBKxZQ8FmK 413
+toggleBlockPlayersUI(true) -- Crusty Hub discord.gg/DBKxZQ8FmK 414
+-- discord.gg/DBKxZQ8FmK
+-- discord.gg/DBKxZQ8FmK
+-- discord.gg/DBKxZQ8FmK
+-- discord.gg/DBKxZQ8FmK
+-- discord.gg/DBKxZQ8FmK
+-- discord.gg/DBKxZQ8FmK
+-----------------------------------
+-- MADE BY PLATIN
+-- DISCORD : platinv
+-----------------------------------
+-----------------------------------
+-- MADE BY PLATIN
+-- DISCORD : platinv
+-----------------------------------
+-----------------------------------
+-- MADE BY PLATIN
+-- DISCORD : platinv
+-----------------------------------
+-----------------------------------
+-- MADE BY PLATIN
+-- DISCORD : platinv
+-----------------------------------
