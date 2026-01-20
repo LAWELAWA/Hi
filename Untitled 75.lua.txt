@@ -1,0 +1,1590 @@
+-- ==========================================
+    -- MAIN HOOK HUB SCRIPT STARTS HERE
+    -- ==========================================
+    
+    local UserInputService = game:GetService("UserInputService")
+    local RunService = game:GetService("RunService")
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+
+    -- ==========================================
+    -- GLOBAL CONFIG
+    -- ==========================================
+    getgenv().HOOK_CONFIG = {
+        AUTO_STEAL_ENABLED = false,
+        INF_JUMP_ENABLED = false,
+        JUMP_FORCE = 50,
+        FALL_CLAMP = 80,
+        UNWALK_ENABLED = false,
+        SPEED_VAL = 1,
+        STEAL_SPEED_VAL = 1,
+        PLAYER_ESP_ENABLED = false,
+        AUTO_MEDUSA_ENABLED = false,
+        MEDUSA_RANGE = 10,
+        SPINBOT_ENABLED = false,
+        SPINBOT_SPEED = 0.5,
+        SPINBOT_KEYBIND = nil,
+        -- Keybind storage
+        SPEED_BOOST_KEYBIND = nil,
+        HIT_WHILE_STEALING_KEYBIND = nil,
+        AUTO_STEAL_KEYBIND = nil,
+        INF_JUMP_KEYBIND = nil,
+        SPEED_WHILE_STEALING_KEYBIND = nil,
+        PLAYER_ESP_KEYBIND = nil
+    }
+    local CONFIG = getgenv().HOOK_CONFIG
+
+    -- ==========================================
+    -- VARIABLES FOR FUNCTIONS
+    -- ==========================================
+    local speedBoostEnabled = false
+    local speedBoostTargetSpeed = CONFIG.SPEED_VAL
+    local speedBoostConnection = nil
+    local speedBoostKeybind = CONFIG.SPEED_BOOST_KEYBIND
+
+    local speedWhileStealingEnabled = false
+    local speedWhileStealingTargetSpeed = CONFIG.STEAL_SPEED_VAL
+    local speedWhileStealingConnection = nil
+    local speedWhileStealingKeybind = CONFIG.SPEED_WHILE_STEALING_KEYBIND
+
+    local antiRagdollMovementConnection = nil
+    local antiRagdollRagdollConnection = nil
+    local antiRagdollInputConnections = {}
+    local antiRagdollIsRagdolled = false
+    local antiRagdollMoveDirection = Vector3.new(0, 0, 0)
+    local antiRagdollKeysDown = {}
+
+    local hitWhileStealingEnabled = false
+    local hitWhileStealingConnection = nil
+    local targetRemote = nil
+    local hitWhileStealingKeybind = CONFIG.HIT_WHILE_STEALING_KEYBIND
+
+    local autoMedusaEnabled = false
+    local autoMedusaConnection = nil
+    local medusaUseRemote = nil
+    local medusaCooldown = false
+    local medusaLastUsed = 0
+
+    local unwalkEnabled = false
+
+    local autoStealEnabled = false
+    local autoStealKeybind = CONFIG.AUTO_STEAL_KEYBIND
+
+    local infJumpEnabled = false
+    local infJumpKeybind = CONFIG.INF_JUMP_KEYBIND
+
+    local playerESPEnabled = false
+    local playerESPKeybind = CONFIG.PLAYER_ESP_KEYBIND
+
+    -- Spinbot Variables
+    local spinbotEnabled = false
+    local spinbotSpeed = CONFIG.SPINBOT_SPEED
+    local spinbotConnection = nil
+    local spinbotPhase = 1 -- 1 = spinning, 2 = bypass
+    local spinbotLastSwitch = 0
+    local spinbotKeybind = CONFIG.SPINBOT_KEYBIND
+
+    -- Player ESP Variables
+    local espFolder = Instance.new("Folder")
+    espFolder.Name = "HOOK_ESP"
+    espFolder.Parent = game:GetService("CoreGui")
+
+    local espConnections = {}
+    local espEnabled = false
+    local espBoxes = {}
+    local espBillboards = {}
+
+    -- UI Toggle Variables
+    local uiVisible = true
+
+    -- Config Storage
+    local configStore = {
+        toggles = {},
+        sliders = {},
+        keybinds = {}
+    }
+
+    -- ==========================================
+    -- FIXED PLAYER ESP FUNCTIONS
+    -- ==========================================
+    local function createESP(player)
+        if not espEnabled or player == LocalPlayer then return end
+        
+        local character = player.Character
+        if not character then return end
+        
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        if not humanoidRootPart then return end
+        
+        -- Remove old ESP if exists
+        if espBoxes[player.Name] then
+            espBoxes[player.Name]:Destroy()
+            espBoxes[player.Name] = nil
+        end
+        
+        if espBillboards[player.Name] then
+            espBillboards[player.Name]:Destroy()
+            espBillboards[player.Name] = nil
+        end
+        
+        -- Create Box ESP
+        local box = Instance.new("BoxHandleAdornment")
+        box.Name = player.Name .. "_BOX"
+        box.Adornee = humanoidRootPart
+        box.AlwaysOnTop = true
+        box.ZIndex = 5
+        box.Size = Vector3.new(4, 6, 4)
+        box.Color3 = player.Team and player.TeamColor.Color or Color3.fromRGB(255, 0, 0)
+        box.Transparency = 0.7
+        box.Parent = espFolder
+        
+        -- Create Name ESP
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = player.Name .. "_NAME"
+        billboard.Adornee = humanoidRootPart
+        billboard.Size = UDim2.new(0, 200, 0, 50)
+        billboard.StudsOffset = Vector3.new(0, 3.5, 0)
+        billboard.AlwaysOnTop = true
+        billboard.MaxDistance = 1000
+        billboard.Parent = espFolder
+        
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Name = "NameLabel"
+        nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+        nameLabel.Position = UDim2.new(0, 0, 0, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = player.Name
+        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        nameLabel.TextStrokeTransparency = 0
+        nameLabel.TextSize = 14
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.Parent = billboard
+        
+        local distanceLabel = Instance.new("TextLabel")
+        distanceLabel.Name = "DistanceLabel"
+        distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
+        distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
+        distanceLabel.BackgroundTransparency = 1
+        distanceLabel.Text = "0 studs"
+        distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        distanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        distanceLabel.TextStrokeTransparency = 0
+        distanceLabel.TextSize = 12
+        distanceLabel.Font = Enum.Font.Gotham
+        distanceLabel.Parent = billboard
+        
+        -- Store references
+        espBoxes[player.Name] = box
+        espBillboards[player.Name] = billboard
+    end
+
+    local function removeESP(player)
+        if espBoxes[player.Name] then
+            espBoxes[player.Name]:Destroy()
+            espBoxes[player.Name] = nil
+        end
+        
+        if espBillboards[player.Name] then
+            espBillboards[player.Name]:Destroy()
+            espBillboards[player.Name] = nil
+        end
+    end
+
+    local function updateESP()
+        if not espEnabled then return end
+        
+        -- Update ESP for all players
+        for _, player in pairs(Players:GetPlayers()) do
+            if player == LocalPlayer then continue end
+            
+            local character = player.Character
+            if not character then
+                removeESP(player)
+                continue
+            end
+            
+            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+            if not humanoidRootPart then
+                removeESP(player)
+                continue
+            end
+            
+            -- Create ESP if it doesn't exist
+            if not espBoxes[player.Name] or not espBillboards[player.Name] then
+                createESP(player)
+            else
+                -- Update existing ESP
+                local box = espBoxes[player.Name]
+                local billboard = espBillboards[player.Name]
+                
+                if box then
+                    box.Adornee = humanoidRootPart
+                    box.Color3 = player.Team and player.TeamColor.Color or Color3.fromRGB(255, 0, 0)
+                end
+                
+                if billboard then
+                    billboard.Adornee = humanoidRootPart
+                    local localRootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if localRootPart then
+                        local distance = (humanoidRootPart.Position - localRootPart.Position).Magnitude
+                        local distanceLabel = billboard:FindFirstChild("DistanceLabel")
+                        if distanceLabel then
+                            distanceLabel.Text = math.floor(distance) .. " studs"
+                        end
+                    end
+                end
+            end
+        end
+        
+        -- Clean up players who left
+        for playerName in pairs(espBoxes) do
+            if not Players:FindFirstChild(playerName) then
+                if espBoxes[playerName] then
+                    espBoxes[playerName]:Destroy()
+                end
+                if espBillboards[playerName] then
+                    espBillboards[playerName]:Destroy()
+                end
+                espBoxes[playerName] = nil
+                espBillboards[playerName] = nil
+            end
+        end
+    end
+
+    local function clearESP()
+        for _, box in pairs(espBoxes) do
+            if box then
+                box:Destroy()
+            end
+        end
+        
+        for _, billboard in pairs(espBillboards) do
+            if billboard then
+                billboard:Destroy()
+            end
+        end
+        
+        espBoxes = {}
+        espBillboards = {}
+    end
+
+    local function startESP()
+        if espEnabled then return end
+        
+        espEnabled = true
+        
+        -- Clear any existing ESP
+        clearESP()
+        
+        -- Update ESP every frame
+        table.insert(espConnections, RunService.RenderStepped:Connect(updateESP))
+        
+        -- Handle player additions/removals
+        table.insert(espConnections, Players.PlayerAdded:Connect(function(player)
+            if espEnabled then
+                createESP(player)
+            end
+        end))
+        
+        table.insert(espConnections, Players.PlayerRemoving:Connect(function(player)
+            if espEnabled then
+                removeESP(player)
+            end
+        end))
+        
+        -- Create ESP for existing players
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                createESP(player)
+            end
+        end
+    end
+
+    local function stopESP()
+        espEnabled = false
+        
+        -- Disconnect all ESP connections
+        for _, connection in ipairs(espConnections) do
+            if connection then
+                connection:Disconnect()
+            end
+        end
+        espConnections = {}
+        
+        -- Clear ESP visuals
+        clearESP()
+    end
+
+    -- ==========================================
+    -- FIXED SPEED BOOST FUNCTIONS (1-50)
+    -- ==========================================
+    local function enableSpeedBoost()
+        if speedBoostConnection then 
+            speedBoostConnection:Disconnect() 
+            speedBoostConnection = nil
+        end
+        
+        speedBoostConnection = RunService.Heartbeat:Connect(function()
+            if not speedBoostEnabled then return end
+            
+            local char = LocalPlayer.Character
+            if not char then return end
+            
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            local hum = char:FindFirstChild("Humanoid")
+            if not hrp or not hum then return end
+            
+            -- Apply speed based on slider value (1-50)
+            local move = hum.MoveDirection
+            
+            if move.Magnitude > 0.1 then
+                hrp.AssemblyLinearVelocity = Vector3.new(
+                    move.X * speedBoostTargetSpeed,
+                    hrp.AssemblyLinearVelocity.Y,
+                    move.Z * speedBoostTargetSpeed
+                )
+            else
+                hrp.AssemblyLinearVelocity = Vector3.new(0, hrp.AssemblyLinearVelocity.Y, 0)
+            end
+        end)
+    end
+
+    local function disableSpeedBoost()
+        if speedBoostConnection then
+            speedBoostConnection:Disconnect()
+            speedBoostConnection = nil
+        end
+    end
+
+    local function onSpeedBoostToggle(state)
+        speedBoostEnabled = state
+        if state then
+            enableSpeedBoost()
+        else
+            disableSpeedBoost()
+        end
+    end
+
+    -- ==========================================
+    -- FIXED SPEED WHILE STEALING FUNCTIONS (1-31)
+    -- ==========================================
+    local function enableSpeedWhileStealing()
+        if speedWhileStealingConnection then 
+            speedWhileStealingConnection:Disconnect() 
+            speedWhileStealingConnection = nil
+        end
+        
+        speedWhileStealingConnection = RunService.Heartbeat:Connect(function()
+            if not speedWhileStealingEnabled then return end
+            
+            local char = LocalPlayer.Character
+            if not char then return end
+            
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            local hum = char:FindFirstChild("Humanoid")
+            if not hrp or not hum then return end
+            
+            -- Apply speed based on slider value (1-31)
+            local move = hum.MoveDirection
+            
+            if move.Magnitude > 0.1 then
+                hrp.AssemblyLinearVelocity = Vector3.new(
+                    move.X * speedWhileStealingTargetSpeed,
+                    hrp.AssemblyLinearVelocity.Y,
+                    move.Z * speedWhileStealingTargetSpeed
+                )
+            else
+                hrp.AssemblyLinearVelocity = Vector3.new(0, hrp.AssemblyLinearVelocity.Y, 0)
+            end
+        end)
+    end
+
+    local function disableSpeedWhileStealing()
+        if speedWhileStealingConnection then
+            speedWhileStealingConnection:Disconnect()
+            speedWhileStealingConnection = nil
+        end
+    end
+
+    local function onSpeedWhileStealingToggle(state)
+        speedWhileStealingEnabled = state
+        if state then
+            enableSpeedWhileStealing()
+        else
+            disableSpeedWhileStealing()
+        end
+    end
+
+    -- ==========================================
+    -- SPINBOT FUNCTIONS
+    -- ==========================================
+    local function enableSpinbot()
+        if spinbotConnection then 
+            spinbotConnection:Disconnect() 
+            spinbotConnection = nil
+        end
+        
+        spinbotConnection = RunService.Heartbeat:Connect(function()
+            if not spinbotEnabled then return end
+            
+            local character = LocalPlayer.Character
+            if not character then return end
+            
+            local root = character:FindFirstChild("HumanoidRootPart")
+            local hum = character:FindFirstChild("Humanoid")
+            if not root or not hum then return end
+            
+            local currentTime = tick()
+            
+            -- Phase switching logic
+            if spinbotPhase == 1 then
+                -- [PHASE 1] Active Spin & God (5 Seconds)
+                if currentTime - spinbotLastSwitch > 5 then
+                    spinbotPhase = 2
+                    spinbotLastSwitch = currentTime
+                else
+                    -- This allows you to walk while spinning
+                    hum.AutoRotate = false 
+                    root.CFrame = root.CFrame * CFrame.Angles(0, spinbotSpeed, 0)
+                    
+                    -- Stealth God Mode
+                    if hum.Health < 100 then
+                        hum.Health = 100
+                    end
+                    
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+                    hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+                end
+            else
+                -- [PHASE 2] AC Bypass Window (0.5 Seconds)
+                if currentTime - spinbotLastSwitch > 0.5 then
+                    spinbotPhase = 1
+                    spinbotLastSwitch = currentTime
+                else
+                    -- Resetting AutoRotate briefly helps bypass "illegal movement" checks
+                    hum.AutoRotate = true
+                end
+            end
+        end)
+    end
+
+    local function disableSpinbot()
+        if spinbotConnection then
+            spinbotConnection:Disconnect()
+            spinbotConnection = nil
+        end
+        
+        -- Reset character state
+        local character = LocalPlayer.Character
+        if character then
+            local hum = character:FindFirstChild("Humanoid")
+            if hum then
+                hum.AutoRotate = true
+            end
+        end
+        
+        spinbotPhase = 1
+        spinbotLastSwitch = 0
+    end
+
+    local function onSpinbotToggle(state)
+        spinbotEnabled = state
+        if state then
+            enableSpinbot()
+        else
+            disableSpinbot()
+        end
+    end
+
+    -- ==========================================
+    -- ANTI RAGDOLL FUNCTIONS
+    -- ==========================================
+    local function enableAntiRagdollGodmode()
+        local character = LocalPlayer.Character
+        if not character then return end
+        
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if not humanoid then return end
+        
+        humanoid.MaxHealth = math.huge
+        humanoid.Health = math.huge
+        
+        humanoid.HealthChanged:Connect(function()
+            if humanoid.Health < math.huge then
+                humanoid.Health = math.huge
+            end
+        end)
+    end
+
+    local function checkRagdollState(character)
+        if not character then return false end
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if not humanoid then return false end
+        
+        local state = humanoid:GetState()
+        return state == Enum.HumanoidStateType.FallingDown or 
+               state == Enum.HumanoidStateType.Physics or
+               state == Enum.HumanoidStateType.GettingUp
+    end
+
+    local function onAntiRagdollInputBegan(input, gameProcessed)
+        if gameProcessed or not antiRagdollIsRagdolled then return end
+        
+        local character = LocalPlayer.Character
+        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return end
+        
+        if input.KeyCode == Enum.KeyCode.W then
+            antiRagdollKeysDown.W = true
+            antiRagdollMoveDirection = Vector3.new(antiRagdollMoveDirection.X, 0, 1)
+        elseif input.KeyCode == Enum.KeyCode.S then
+            antiRagdollKeysDown.S = true
+            antiRagdollMoveDirection = Vector3.new(antiRagdollMoveDirection.X, 0, -1)
+        elseif input.KeyCode == Enum.KeyCode.A then
+            antiRagdollKeysDown.A = true
+            antiRagdollMoveDirection = Vector3.new(-1, 0, antiRagdollMoveDirection.Z)
+        elseif input.KeyCode == Enum.KeyCode.D then
+            antiRagdollKeysDown.D = true
+            antiRagdollMoveDirection = Vector3.new(1, 0, antiRagdollMoveDirection.Z)
+        elseif input.KeyCode == Enum.KeyCode.Space then
+            rootPart.Velocity = Vector3.new(rootPart.Velocity.X, 50, rootPart.Velocity.Z)
+        end
+    end
+
+    local function onAntiRagdollInputEnded(input, gameProcessed)
+        if gameProcessed or not antiRagdollIsRagdolled then return end
+        
+        if input.KeyCode == Enum.KeyCode.W then
+            antiRagdollKeysDown.W = false
+            if antiRagdollKeysDown.S then
+                antiRagdollMoveDirection = Vector3.new(antiRagdollMoveDirection.X, 0, -1)
+            else
+                antiRagdollMoveDirection = Vector3.new(antiRagdollMoveDirection.X, 0, 0)
+            end
+        elseif input.KeyCode == Enum.KeyCode.S then
+            antiRagdollKeysDown.S = false
+            if antiRagdollKeysDown.W then
+                antiRagdollMoveDirection = Vector3.new(antiRagdollMoveDirection.X, 0, 1)
+            else
+                antiRagdollMoveDirection = Vector3.new(antiRagdollMoveDirection.X, 0, 0)
+            end
+        elseif input.KeyCode == Enum.KeyCode.A then
+            antiRagdollKeysDown.A = false
+            if antiRagdollKeysDown.D then
+                antiRagdollMoveDirection = Vector3.new(1, 0, antiRagdollMoveDirection.Z)
+            else
+                antiRagdollMoveDirection = Vector3.new(0, 0, antiRagdollMoveDirection.Z)
+            end
+        elseif input.KeyCode == Enum.KeyCode.D then
+            antiRagdollKeysDown.D = false
+            if antiRagdollKeysDown.A then
+                antiRagdollMoveDirection = Vector3.new(-1, 0, antiRagdollMoveDirection.Z)
+            else
+                antiRagdollMoveDirection = Vector3.new(0, 0, antiRagdollMoveDirection.Z)
+            end
+        end
+    end
+
+    local function setupAntiRagdollMovement()
+        if antiRagdollMovementConnection then
+            antiRagdollMovementConnection:Disconnect()
+            antiRagdollMovementConnection = nil
+        end
+        
+        antiRagdollMovementConnection = RunService.Heartbeat:Connect(function()
+            local character = LocalPlayer.Character
+            if not character then return end
+            
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            if not rootPart or not rootPart.Parent then 
+                antiRagdollMoveDirection = Vector3.new(0, 0, 0)
+                return 
+            end
+            
+            if antiRagdollIsRagdolled and antiRagdollMoveDirection.Magnitude > 0 then
+                local camera = workspace.CurrentCamera
+                local cameraCFrame = camera.CFrame
+                
+                local forward = cameraCFrame.LookVector
+                forward = Vector3.new(forward.X, 0, forward.Z).Unit
+                
+                local right = cameraCFrame.RightVector
+                right = Vector3.new(right.X, 0, right.Z).Unit
+                
+                local movement = Vector3.new(0, 0, 0)
+                movement = movement + (right * antiRagdollMoveDirection.X)
+                movement = movement + (forward * antiRagdollMoveDirection.Z)
+                
+                if movement.Magnitude > 1 then
+                    movement = movement.Unit
+                end
+                
+                rootPart.Velocity = Vector3.new(
+                    movement.X * 35,
+                    rootPart.Velocity.Y,
+                    movement.Z * 35
+                )
+            end
+        end)
+    end
+
+    local function setupAntiRagdollDetection()
+        if antiRagdollRagdollConnection then
+            antiRagdollRagdollConnection:Disconnect()
+            antiRagdollRagdollConnection = nil
+        end
+        
+        antiRagdollRagdollConnection = RunService.Heartbeat:Connect(function()
+            local character = LocalPlayer.Character
+            if not character then return end
+            
+            local ragdollState = checkRagdollState(character)
+            
+            if ragdollState and not antiRagdollIsRagdolled then
+                antiRagdollIsRagdolled = true
+            elseif not ragdollState and antiRagdollIsRagdolled then
+                antiRagdollIsRagdolled = false
+                antiRagdollMoveDirection = Vector3.new(0, 0, 0)
+                antiRagdollKeysDown = {}
+            end
+        end)
+    end
+
+    local function cleanupAntiRagdoll()
+        if antiRagdollMovementConnection then
+            antiRagdollMovementConnection:Disconnect()
+            antiRagdollMovementConnection = nil
+        end
+        
+        if antiRagdollRagdollConnection then
+            antiRagdollRagdollConnection:Disconnect()
+            antiRagdollRagdollConnection = nil
+        end
+        
+        for _, connection in ipairs(antiRagdollInputConnections) do
+            if connection then
+                connection:Disconnect()
+            end
+        end
+        antiRagdollInputConnections = {}
+        
+        antiRagdollIsRagdolled = false
+        antiRagdollMoveDirection = Vector3.new(0, 0, 0)
+        antiRagdollKeysDown = {}
+    end
+
+    local function onAntiRagdollToggle(state)
+        if state then
+            enableAntiRagdollGodmode()
+            setupAntiRagdollMovement()
+            setupAntiRagdollDetection()
+            
+            if UserInputService.KeyboardEnabled then
+                table.insert(antiRagdollInputConnections, UserInputService.InputBegan:Connect(onAntiRagdollInputBegan))
+                table.insert(antiRagdollInputConnections, UserInputService.InputEnded:Connect(onAntiRagdollInputEnded))
+            end
+            
+            LocalPlayer.CharacterAdded:Connect(function()
+                task.wait(1)
+                enableAntiRagdollGodmode()
+            end)
+        else
+            cleanupAntiRagdoll()
+        end
+    end
+
+    -- ==========================================
+    -- HIT WHILE STEALING FUNCTION
+    -- ==========================================
+    local function onHitWhileStealingToggle(state)
+        hitWhileStealingEnabled = state
+        
+        if hitWhileStealingConnection then
+            hitWhileStealingConnection:Disconnect()
+            hitWhileStealingConnection = nil
+        end
+        
+        if state then
+            -- Find remote
+            for _, v in pairs(game:GetDescendants()) do
+                if v.Name == "UseItem" and (v:IsA("RemoteEvent") or v:IsA("RemoteFunction")) then
+                    targetRemote = v
+                    break
+                end
+            end
+            
+            hitWhileStealingConnection = RunService.RenderStepped:Connect(function()
+                if not hitWhileStealingEnabled then return end
+                
+                local char = LocalPlayer.Character
+                if not char then return end
+                
+                local root = char:FindFirstChild("HumanoidRootPart")
+                if not root then return end
+                
+                local backpack = LocalPlayer:FindFirstChild("Backpack")
+                local bat = (backpack and backpack:FindFirstChild("Bat")) or char:FindFirstChild("Bat")
+                if not bat then return end
+                
+                for _, other in ipairs(Players:GetPlayers()) do
+                    if other ~= LocalPlayer and other.Character then
+                        local enemyRoot = other.Character:FindFirstChild("HumanoidRootPart")
+                        
+                        if enemyRoot and (root.Position - enemyRoot.Position).Magnitude <= 4 then
+                            -- INSTANT EQUIP
+                            bat.Parent = char
+                            
+                            -- ULTRA FAST REMOTE FIRE
+                            if targetRemote then
+                                targetRemote:FireServer(bat)
+                                targetRemote:FireServer(bat)
+                                targetRemote:FireServer(bat)
+                            end
+                            
+                            -- FORCED SWING
+                            bat:Activate()
+                            break
+                        end
+                    end
+                end
+            end)
+        end
+    end
+
+    -- ==========================================
+    -- AUTO MEDUSA FUNCTION
+    -- ==========================================
+    local function onAutoMedusaToggle(state)
+        CONFIG.AUTO_MEDUSA_ENABLED = state
+        
+        if autoMedusaConnection then
+            autoMedusaConnection:Disconnect()
+            autoMedusaConnection = nil
+        end
+        
+        if state then
+            autoMedusaConnection = RunService.Heartbeat:Connect(function()
+                if not CONFIG.AUTO_MEDUSA_ENABLED then return end
+                
+                -- Check cooldown
+                if medusaCooldown then
+                    if tick() - medusaLastUsed >= 25 then
+                        medusaCooldown = false
+                    else
+                        return
+                    end
+                end
+                
+                local character = LocalPlayer.Character
+                if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+                
+                -- Find Medusa Head
+                local medusaHead = nil
+                local backpack = LocalPlayer:FindFirstChild("Backpack")
+                if backpack then
+                    for _, item in pairs(backpack:GetChildren()) do
+                        if item:IsA("Tool") and (item.Name:lower():find("medusa") or item.Name:lower():find("head")) then
+                            medusaHead = item
+                            break
+                        end
+                    end
+                end
+                
+                if not medusaHead then return end
+                
+                -- Find Use Remote if not already found
+                if not medusaUseRemote then
+                    local rs = game:GetService("ReplicatedStorage")
+                    for _, obj in pairs(rs:GetChildren()) do
+                        if (obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction")) and 
+                           (obj.Name == "UseItem" or obj.Name == "UseTool" or obj.Name == "RemoteEvent") then
+                            medusaUseRemote = obj
+                            break
+                        end
+                    end
+                end
+                
+                -- Get nearby players
+                local myPos = character.HumanoidRootPart.Position
+                for _, otherPlayer in pairs(Players:GetPlayers()) do
+                    if otherPlayer ~= LocalPlayer and otherPlayer.Character then
+                        local otherRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        if otherRoot then
+                            local distance = (myPos - otherRoot.Position).Magnitude
+                            if distance <= CONFIG.MEDUSA_RANGE then
+                                -- Equip and use Medusa Head
+                                character.Humanoid:EquipTool(medusaHead)
+                                
+                                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                                task.wait(0.001)
+                                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                                
+                                if medusaUseRemote then
+                                    pcall(function()
+                                        if medusaUseRemote:IsA("RemoteEvent") then
+                                            medusaUseRemote:FireServer(medusaHead)
+                                        else
+                                            medusaUseRemote:InvokeServer(medusaHead)
+                                        end
+                                    end)
+                                end
+                                
+                                -- Set cooldown
+                                medusaCooldown = true
+                                medusaLastUsed = tick()
+                                
+                                break
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+
+    -- ==========================================
+    -- UNWALK FUNCTION
+    -- ==========================================
+    local function onUnwalkToggle(state)
+        unwalkEnabled = state
+        
+        if state then
+            local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local animate = character:WaitForChild("Animate")
+            
+            local animationsToDisable = {
+                "run", 
+                "walk", 
+                "jump", 
+                "idle", 
+                "fall", 
+                "climb", 
+                "swim", 
+                "sit"
+            }
+            
+            for _, animName in pairs(animationsToDisable) do
+                if animate:FindFirstChild(animName) then
+                    local animValue = animate[animName]
+                    for _, obj in pairs(animValue:GetChildren()) do
+                        if obj:IsA("Animation") then
+                            obj.AnimationId = "rbxassetid://0"
+                        end
+                    end
+                end
+            end
+            
+            character.Humanoid:ChangeState(Enum.HumanoidStateType.Land)
+        end
+    end
+
+    -- ==========================================
+    -- PLAYER ESP TOGGLE
+    -- ==========================================
+    local function onPlayerESPToggle(state)
+        CONFIG.PLAYER_ESP_ENABLED = state
+        if state then
+            startESP()
+        else
+            stopESP()
+        end
+    end
+
+    -- ==========================================
+    -- AUTO STEAL TOGGLE
+    -- ==========================================
+    local function onAutoStealToggle(state)
+        CONFIG.AUTO_STEAL_ENABLED = state
+    end
+
+    -- ==========================================
+    -- INF JUMP TOGGLE
+    -- ==========================================
+    local function onInfJumpToggle(state)
+        CONFIG.INF_JUMP_ENABLED = state
+    end
+
+    -- ==========================================
+    -- THEME COLORS
+    -- ==========================================
+    local MainColor = Color3.fromRGB(0, 255, 255)
+    local DarkBg = Color3.fromRGB(12, 12, 12)
+    local Secondary = Color3.fromRGB(25, 25, 25)
+    local TextWhite = Color3.fromRGB(255, 255, 255)
+
+    -- ==========================================
+    -- CREATE UI
+    -- ==========================================
+    local HookHub = Instance.new("ScreenGui")
+    HookHub.Name = "HookHub"; HookHub.Parent = game:GetService("CoreGui")
+
+    -- INCREASED UI HEIGHT FROM 520 TO 620
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"; MainFrame.Parent = HookHub; MainFrame.BackgroundColor3 = DarkBg
+    MainFrame.Position = UDim2.new(0.5, -220, 0.5, -310) -- Adjusted position for taller window
+    MainFrame.Size = UDim2.new(0, 440, 0, 620) -- Increased height to 620
+    MainFrame.Active = true; MainFrame.Draggable = true; Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+    local Stroke = Instance.new("UIStroke", MainFrame); Stroke.Color = MainColor; Stroke.Thickness = 2.5; Stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    -- ==========================================
+    -- HEADER & SEPARATOR
+    -- ==========================================
+    local TopBar = Instance.new("Frame", MainFrame)
+    TopBar.Size = UDim2.new(1, 0, 0, 75); TopBar.BackgroundTransparency = 1
+
+    local HookBox = Instance.new("Frame", TopBar)
+    HookBox.Size = UDim2.new(0, 65, 0, 30); HookBox.Position = UDim2.new(0, 15, 0, 25) 
+    HookBox.BackgroundColor3 = MainColor; Instance.new("UICorner", HookBox).CornerRadius = UDim.new(0, 5)
+
+    local HookText = Instance.new("TextLabel", HookBox)
+    HookText.Text = "Hook"; HookText.Size = UDim2.new(1, 0, 1, 0); HookText.TextColor3 = Color3.new(0,0,0); HookText.Font = Enum.Font.GothamBold; HookText.TextSize = 18; HookText.BackgroundTransparency = 1
+
+    local DuelsText = Instance.new("TextLabel", TopBar)
+    DuelsText.Text = "DUELS"; DuelsText.Position = UDim2.new(0, 85, 0, 18); DuelsText.Size = UDim2.new(0, 100, 0, 25); DuelsText.TextColor3 = TextWhite; DuelsText.Font = Enum.Font.GothamBold; DuelsText.TextSize = 22; DuelsText.TextXAlignment = Enum.TextXAlignment.Left; DuelsText.BackgroundTransparency = 1
+
+    local DiscordText = Instance.new("TextLabel", TopBar)
+    DiscordText.Text = "discord.gg/hookhub"; DiscordText.Position = UDim2.new(0, 85, 0, 42); DiscordText.Size = UDim2.new(0, 150, 0, 15); DiscordText.TextColor3 = MainColor; DiscordText.Font = Enum.Font.GothamMedium; DiscordText.TextSize = 11; DiscordText.TextXAlignment = Enum.TextXAlignment.Left; DiscordText.BackgroundTransparency = 1
+
+    local SeparatorLine = Instance.new("Frame", TopBar)
+    SeparatorLine.Name = "SeparatorLine"; SeparatorLine.Size = UDim2.new(1, 0, 0, 1); SeparatorLine.Position = UDim2.new(0, 0, 0, 72); SeparatorLine.BackgroundColor3 = MainColor; SeparatorLine.BorderSizePixel = 0
+    local LineGlow = Instance.new("UIStroke", SeparatorLine); LineGlow.Color = MainColor; LineGlow.Thickness = 1.5; LineGlow.Transparency = 0.6
+
+    -- ==========================================
+    -- SECTION HEADERS
+    -- ==========================================
+    local CombatHeader = Instance.new("TextLabel", MainFrame)
+    CombatHeader.Text = "COMBAT"; CombatHeader.Size = UDim2.new(0, 205, 0, 25); CombatHeader.Position = UDim2.new(0, 15, 0, 80); CombatHeader.TextColor3 = MainColor; CombatHeader.Font = Enum.Font.GothamBold; CombatHeader.TextSize = 14; CombatHeader.BackgroundTransparency = 1
+
+    local MovementHeader = Instance.new("TextLabel", MainFrame)
+    MovementHeader.Text = "MOVEMENT"; MovementHeader.Size = UDim2.new(0, 205, 0, 25); MovementHeader.Position = UDim2.new(0, 230, 0, 80); MovementHeader.TextColor3 = MainColor; MovementHeader.Font = Enum.Font.GothamBold; MovementHeader.TextSize = 14; MovementHeader.BackgroundTransparency = 1
+
+    -- Lists - INCREASED HEIGHT TO SHOW MORE CONTENT
+    local LeftSide = Instance.new("ScrollingFrame", MainFrame); LeftSide.Position = UDim2.new(0, 15, 0, 110); LeftSide.Size = UDim2.new(0, 200, 1, -175); LeftSide.BackgroundTransparency = 1; LeftSide.ScrollBarThickness = 3; LeftSide.ScrollBarImageColor3 = MainColor
+    local LeftList = Instance.new("UIListLayout", LeftSide); LeftList.Padding = UDim.new(0, 8); LeftList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    local RightSide = Instance.new("ScrollingFrame", MainFrame); RightSide.Position = UDim2.new(0, 230, 0, 110); RightSide.Size = UDim2.new(0, 200, 1, -175); RightSide.BackgroundTransparency = 1; RightSide.ScrollBarThickness = 3; RightSide.ScrollBarImageColor3 = MainColor
+    local RightList = Instance.new("UIListLayout", RightSide); RightList.Padding = UDim.new(0, 8); RightList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    LeftList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() LeftSide.CanvasSize = UDim2.new(0, 0, 0, LeftList.AbsoluteContentSize.Y + 20) end)
+    RightList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() RightSide.CanvasSize = UDim2.new(0, 0, 0, RightList.AbsoluteContentSize.Y + 20) end)
+
+    -- ==========================================
+    -- SIMPLIFIED TOGGLE CREATION FUNCTION
+    -- ==========================================
+    local function CreateToggle(name, parent, hasBind, callback)
+        local Frame = Instance.new("Frame", parent); Frame.Size = UDim2.new(0, 190, 0, 36); Frame.BackgroundColor3 = Secondary; Instance.new("UICorner", Frame)
+        local Label = Instance.new("TextLabel", Frame); Label.Text = name; Label.Size = UDim2.new(1, 0, 1, 0); Label.TextColor3 = TextWhite; Label.Font = Enum.Font.GothamMedium; Label.TextSize = 11; Label.TextXAlignment = Enum.TextXAlignment.Center; Label.BackgroundTransparency = 1
+        local Toggle = Instance.new("TextButton", Frame); Toggle.Size = UDim2.new(0, 34, 0, 18); Toggle.Position = UDim2.new(1, -42, 0.5, -9); Toggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50); Toggle.Text = ""; Instance.new("UICorner", Toggle).CornerRadius = UDim.new(1, 0)
+        local Circle = Instance.new("Frame", Toggle); Circle.Size = UDim2.new(0, 14, 0, 14); Circle.Position = UDim2.new(0, 2, 0.5, -7); Circle.BackgroundColor3 = TextWhite; Instance.new("UICorner", Circle)
+        local state = false; local boundKey = nil
+        
+        local function updateVisual()
+            Circle:TweenPosition(state and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7), "Out", "Back", 0.2); 
+            Toggle.BackgroundColor3 = state and MainColor or Color3.fromRGB(50, 50, 50); 
+            if callback then 
+                callback(state) 
+            end
+        end
+        
+        Toggle.MouseButton1Click:Connect(function() 
+            state = not state; 
+            updateVisual() 
+        end)
+        
+        if hasBind then
+            local BindBtn = Instance.new("TextButton", Frame); 
+            BindBtn.Size = UDim2.new(0, 32, 0, 20); 
+            BindBtn.Position = UDim2.new(0, 6, 0.5, -10); 
+            BindBtn.BackgroundColor3 = Color3.fromRGB(40,40,40); 
+            BindBtn.Text = "NONE"; 
+            BindBtn.TextColor3 = MainColor; 
+            BindBtn.Font = Enum.Font.GothamBold; 
+            BindBtn.TextSize = 9; 
+            Instance.new("UICorner", BindBtn)
+            
+            BindBtn.MouseButton1Click:Connect(function() 
+                BindBtn.Text = "..."; 
+                local conn; 
+                conn = UserInputService.InputBegan:Connect(function(i) 
+                    if i.UserInputType == Enum.UserInputType.Keyboard then 
+                        boundKey = i.KeyCode; 
+                        BindBtn.Text = i.KeyCode.Name:upper(); 
+                        conn:Disconnect() 
+                        
+                        -- Update specific keybind variable
+                        if name == "Spinbot" then
+                            spinbotKeybind = i.KeyCode
+                            CONFIG.SPINBOT_KEYBIND = i.KeyCode
+                        elseif name == "Speed Boost" then
+                            speedBoostKeybind = i.KeyCode
+                            CONFIG.SPEED_BOOST_KEYBIND = i.KeyCode
+                        elseif name == "Hit While Stealing" then
+                            hitWhileStealingKeybind = i.KeyCode
+                            CONFIG.HIT_WHILE_STEALING_KEYBIND = i.KeyCode
+                        elseif name == "Auto Steal" then
+                            autoStealKeybind = i.KeyCode
+                            CONFIG.AUTO_STEAL_KEYBIND = i.KeyCode
+                        elseif name == "Inf Jump" then
+                            infJumpKeybind = i.KeyCode
+                            CONFIG.INF_JUMP_KEYBIND = i.KeyCode
+                        elseif name == "Speed While Stealing" then
+                            speedWhileStealingKeybind = i.KeyCode
+                            CONFIG.SPEED_WHILE_STEALING_KEYBIND = i.KeyCode
+                        elseif name == "Player ESP" then
+                            playerESPKeybind = i.KeyCode
+                            CONFIG.PLAYER_ESP_KEYBIND = i.KeyCode
+                        end
+                    end 
+                end) 
+            end)
+            
+            UserInputService.InputBegan:Connect(function(i, g) 
+                if not g and boundKey and i.KeyCode == boundKey then 
+                    state = not state; 
+                    updateVisual() 
+                end 
+            end)
+        end
+    end
+
+    local function CreateSlider(name, min, max, parent, callback)
+        local Frame = Instance.new("Frame", parent); Frame.Size = UDim2.new(0, 190, 0, 50); Frame.BackgroundTransparency = 1
+        local Label = Instance.new("TextLabel", Frame); Label.Text = name; Label.Size = UDim2.new(1, 0, 0, 20); Label.TextColor3 = TextWhite; Label.Font = Enum.Font.Gotham; Label.TextSize = 11; Label.TextXAlignment = Enum.TextXAlignment.Center; Label.BackgroundTransparency = 1
+        local ValLabel = Instance.new("TextLabel", Frame); ValLabel.Text = tostring(math.floor(min)); ValLabel.Size = UDim2.new(0, 30, 0, 20); ValLabel.Position = UDim2.new(1, -35, 0, 0); ValLabel.TextColor3 = MainColor; ValLabel.Font = Enum.Font.GothamBold; ValLabel.TextSize = 10; ValLabel.BackgroundTransparency = 1
+        local Bar = Instance.new("Frame", Frame); Bar.Size = UDim2.new(1, -10, 0, 6); Bar.Position = UDim2.new(0, 5, 0, 32); Bar.BackgroundColor3 = Secondary; Instance.new("UICorner", Bar)
+        local Fill = Instance.new("Frame", Bar); Fill.Size = UDim2.new(0, 0, 1, 0); Fill.BackgroundColor3 = MainColor; Instance.new("UICorner", Fill)
+        local Knob = Instance.new("Frame", Fill); Knob.Size = UDim2.new(0, 12, 0, 12); Knob.Position = UDim2.new(1, -6, 0.5, -6); Knob.BackgroundColor3 = TextWhite; Instance.new("UICorner", Knob)
+        local Trigger = Instance.new("TextButton", Bar); Trigger.Size = UDim2.new(1,0,1,0); Trigger.BackgroundTransparency = 1; Trigger.Text = ""
+        
+        Trigger.MouseButton1Down:Connect(function()
+            local move; move = RunService.RenderStepped:Connect(function()
+                local mouse = UserInputService:GetMouseLocation(); local pct = math.clamp((mouse.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1); Fill.Size = UDim2.new(pct, 0, 1, 0)
+                local val = min + (max - min) * pct; ValLabel.Text = tostring(math.floor(val)); 
+                if callback then 
+                    callback(val) 
+                end
+            end)
+            UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then move:Disconnect() end end)
+        end)
+    end
+
+    -- ==========================================
+    -- CREATE UI ELEMENTS WITH FUNCTION CALLBACKS
+    -- ==========================================
+
+    -- COMBAT (Left Side)
+    CreateToggle("Speed Boost", LeftSide, true, onSpeedBoostToggle)
+    CreateSlider("Boost Speed", 1, 50, LeftSide, function(v) 
+        speedBoostTargetSpeed = v
+        CONFIG.SPEED_VAL = v
+    end)
+    CreateToggle("Anti Ragdoll", LeftSide, false, onAntiRagdollToggle)
+    CreateToggle("Hit While Stealing", LeftSide, true, onHitWhileStealingToggle)
+    CreateToggle("Auto Medusa", LeftSide, false, onAutoMedusaToggle)
+    CreateSlider("Medusa Range", 1, 20, LeftSide, function(v) 
+        CONFIG.MEDUSA_RANGE = v
+    end)
+
+    -- Add Spinbot with bind
+    CreateToggle("Spinbot", LeftSide, true, onSpinbotToggle)
+    CreateSlider("Spin Speed", 0.1, 2, LeftSide, function(v) 
+        spinbotSpeed = v
+        CONFIG.SPINBOT_SPEED = v
+    end)
+
+    -- Auto Steal should now be visible
+    CreateToggle("Auto Steal", LeftSide, true, onAutoStealToggle)
+
+    -- MOVEMENT (Right Side)
+    CreateToggle("Inf Jump", RightSide, true, onInfJumpToggle)
+    CreateToggle("Speed While Stealing", RightSide, true, onSpeedWhileStealingToggle)
+    CreateSlider("Steal Speed", 1, 31, RightSide, function(v) 
+        speedWhileStealingTargetSpeed = v
+        CONFIG.STEAL_SPEED_VAL = v
+    end)
+    CreateToggle("Unwalk", RightSide, false, onUnwalkToggle)
+    CreateToggle("Player ESP", RightSide, false, onPlayerESPToggle)
+
+    -- ==========================================
+    -- BACKENDS & CLOSE
+    -- ==========================================
+    local Close = Instance.new("TextButton", TopBar); Close.Size = UDim2.new(0, 24, 0, 24); Close.Position = UDim2.new(1, -34, 0, 28); Close.Text = "X"; Close.BackgroundColor3 = Color3.fromRGB(255, 50, 50); Close.TextColor3 = TextWhite; Close.Font = Enum.Font.GothamBold; Instance.new("UICorner", Close); Close.MouseButton1Click:Connect(function() HookHub:Destroy() end)
+
+    -- ==========================================
+    -- LEFT CTRL UI TOGGLE
+    -- ==========================================
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        
+        if input.KeyCode == Enum.KeyCode.LeftControl then
+            uiVisible = not uiVisible
+            MainFrame.Visible = uiVisible
+        end
+    end)
+
+    -- ==========================================
+    -- GLOBAL KEYBIND LISTENER
+    -- ==========================================
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            -- Spinbot keybind
+            if spinbotKeybind and input.KeyCode == spinbotKeybind then
+                spinbotEnabled = not spinbotEnabled
+                onSpinbotToggle(spinbotEnabled)
+            end
+            
+            -- Speed Boost keybind
+            if speedBoostKeybind and input.KeyCode == speedBoostKeybind then
+                speedBoostEnabled = not speedBoostEnabled
+                onSpeedBoostToggle(speedBoostEnabled)
+            end
+            
+            -- Hit While Stealing keybind
+            if hitWhileStealingKeybind and input.KeyCode == hitWhileStealingKeybind then
+                hitWhileStealingEnabled = not hitWhileStealingEnabled
+                onHitWhileStealingToggle(hitWhileStealingEnabled)
+            end
+            
+            -- Auto Steal keybind
+            if autoStealKeybind and input.KeyCode == autoStealKeybind then
+                CONFIG.AUTO_STEAL_ENABLED = not CONFIG.AUTO_STEAL_ENABLED
+                onAutoStealToggle(CONFIG.AUTO_STEAL_ENABLED)
+            end
+            
+            -- Inf Jump keybind
+            if infJumpKeybind and input.KeyCode == infJumpKeybind then
+                CONFIG.INF_JUMP_ENABLED = not CONFIG.INF_JUMP_ENABLED
+                onInfJumpToggle(CONFIG.INF_JUMP_ENABLED)
+            end
+            
+            -- Speed While Stealing keybind
+            if speedWhileStealingKeybind and input.KeyCode == speedWhileStealingKeybind then
+                speedWhileStealingEnabled = not speedWhileStealingEnabled
+                onSpeedWhileStealingToggle(speedWhileStealingEnabled)
+            end
+            
+            -- Player ESP keybind
+            if playerESPKeybind and input.KeyCode == playerESPKeybind then
+                CONFIG.PLAYER_ESP_ENABLED = not CONFIG.PLAYER_ESP_ENABLED
+                onPlayerESPToggle(CONFIG.PLAYER_ESP_ENABLED)
+            end
+        end
+    end)
+
+    -- ==========================================
+    -- INFINITE JUMP BACKEND
+    -- ==========================================
+    RunService.Heartbeat:Connect(function()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        if CONFIG.INF_JUMP_ENABLED and hrp.Velocity.Y < -CONFIG.FALL_CLAMP then 
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, -CONFIG.FALL_CLAMP, hrp.Velocity.Z) 
+        end
+    end)
+
+    UserInputService.JumpRequest:Connect(function()
+        if not CONFIG.INF_JUMP_ENABLED then return end
+        local char = LocalPlayer.Character
+        if not char then return end
+        
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, CONFIG.JUMP_FORCE, hrp.Velocity.Z)
+        end
+    end)
+
+    -- ==========================================
+    -- AUTO STEAL BACKEND
+    -- ==========================================
+    local allAnimalsCache = {}
+    local InternalStealCache = {}
+    local PromptMemoryCache = {}
+    local LastTargetUID = nil
+    local LastPlayerPosition = nil
+    local PlayerVelocity = Vector3.zero
+    local AUTO_STEAL_PROX_RADIUS = 20
+    local PREDICTION_LOOKAHEAD = 1.25
+    local stealConnection = nil
+    local velocityConnection = nil
+
+    local function getHRP()
+        local c = LocalPlayer.Character
+        if not c then return nil end
+        return c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("UpperTorso") or c.PrimaryPart
+    end
+
+    local function getAnimalPosition(animalData)
+        if not animalData or not animalData.plot or not animalData.slot then return nil end
+        
+        local plot = workspace.Plots:FindFirstChild(animalData.plot)
+        if not plot then return nil end
+        
+        local podiums = plot:FindFirstChild("AnimalPodiums")
+        if not podiums then return nil end
+        
+        local podium = podiums:FindFirstChild(animalData.slot)
+        if not podium then return nil end
+        
+        return podium:GetPivot().Position
+    end
+
+    local function getNearestAnimal()
+        local hrp = getHRP()
+        if not hrp then return nil end
+        
+        local nearest = nil
+        local minDist = math.huge
+        
+        for _, animalData in ipairs(allAnimalsCache) do
+            local pos = getAnimalPosition(animalData)
+            if pos then
+                local dist = (hrp.Position - pos).Magnitude
+                
+                if dist < minDist then
+                    minDist = dist
+                    nearest = animalData
+                end
+            end
+        end
+        
+        return nearest
+    end
+
+    local function updatePlayerVelocity()
+        local hrp = getHRP()
+        if not hrp then return end
+        
+        local currentPos = hrp.Position
+        
+        if LastPlayerPosition then
+            PlayerVelocity = (currentPos - LastPlayerPosition) / task.wait()
+        end
+        
+        LastPlayerPosition = currentPos
+    end
+
+    local function getTimeToReach(targetPos)
+        local hrp = getHRP()
+        if not hrp then return math.huge end
+        
+        local currentPos = hrp.Position
+        local distance = (targetPos - currentPos).Magnitude
+        
+        if PlayerVelocity.Magnitude < 0.1 then
+            return math.huge
+        end
+        
+        local directionToTarget = (targetPos - currentPos).Unit
+        local velocityTowardTarget = PlayerVelocity:Dot(directionToTarget)
+        
+        if velocityTowardTarget <= 0 then
+            return math.huge
+        end
+        
+        return distance / velocityTowardTarget
+    end
+
+    local function shouldPreFire(animalData)
+        local animalPos = getAnimalPosition(animalData)
+        if not animalPos then return false end
+        
+        local hrp = getHRP()
+        if not hrp then return false end
+        
+        local currentDistance = (hrp.Position - animalPos).Magnitude
+        
+        if currentDistance <= AUTO_STEAL_PROX_RADIUS then
+            return true
+        end
+        
+        local timeToReach = getTimeToReach(animalPos)
+        
+        if timeToReach <= PREDICTION_LOOKAHEAD and timeToReach > 0 then
+            return true
+        end
+        
+        return false
+    end
+
+    local function findProximityPromptForAnimal(animalData)
+        if not animalData then return nil end
+        
+        local cachedPrompt = PromptMemoryCache[animalData.uid]
+        if cachedPrompt and cachedPrompt.Parent then
+            return cachedPrompt
+        end
+        
+        local plot = workspace.Plots:FindFirstChild(animalData.plot)
+        if not plot then return nil end
+        
+        local podiums = plot:FindFirstChild("AnimalPodiums")
+        if not podiums then return nil end
+        
+        local podium = podiums:FindFirstChild(animalData.slot)
+        if not podium then return nil end
+        
+        local base = podium:FindFirstChild("Base")
+        if not base then return nil end
+        
+        local spawn = base:FindFirstChild("Spawn")
+        if not spawn then return nil end
+        
+        local attach = spawn:FindFirstChild("PromptAttachment")
+        if not attach then 
+            for _, child in ipairs(spawn:GetChildren()) do
+                if child:IsA("ProximityPrompt") then
+                    PromptMemoryCache[animalData.uid] = child
+                    return child
+                end
+            end
+            return nil
+        end
+        
+        for _, p in ipairs(attach:GetChildren()) do
+            if p:IsA("ProximityPrompt") then
+                PromptMemoryCache[animalData.uid] = p
+                return p
+            end
+        end
+        
+        return nil
+    end
+
+    local function buildStealCallbacks(prompt)
+        if InternalStealCache[prompt] then return end
+        
+        local data = {
+            holdCallbacks = {},
+            triggerCallbacks = {},
+            ready = true,
+        }
+        
+        local ok1, conns1 = pcall(getconnections, prompt.PromptButtonHoldBegan)
+        if ok1 and type(conns1) == "table" then
+            for _, conn in ipairs(conns1) do
+                if type(conn.Function) == "function" then
+                    table.insert(data.holdCallbacks, conn.Function)
+                end
+            end
+        end
+        
+        local ok2, conns2 = pcall(getconnections, prompt.Triggered)
+        if ok2 and type(conns2) == "table" then
+            for _, conn in ipairs(conns2) do
+                if type(conn.Function) == "function" then
+                    table.insert(data.triggerCallbacks, conn.Function)
+                end
+            end
+        end
+        
+        if (#data.holdCallbacks > 0) or (#data.triggerCallbacks > 0) then
+            InternalStealCache[prompt] = data
+        end
+    end
+
+    local function runCallbackList(list)
+        for _, fn in ipairs(list) do
+            task.spawn(fn)
+        end
+    end
+
+    local function executeInternalStealAsync(prompt)
+        local data = InternalStealCache[prompt]
+        if not data or not data.ready then return false end
+        
+        data.ready = false
+        
+        task.spawn(function()
+            if #data.holdCallbacks > 0 then
+                runCallbackList(data.holdCallbacks)
+            end
+            
+            task.wait(1.3)
+            
+            if #data.triggerCallbacks > 0 then
+                runCallbackList(data.triggerCallbacks)
+            end
+            
+            task.wait()
+            data.ready = true
+        end)
+        
+        return true
+    end
+
+    local function attemptSteal(prompt)
+        if not prompt or not prompt.Parent then
+            return false
+        end
+        
+        buildStealCallbacks(prompt)
+        if not InternalStealCache[prompt] then
+            return false
+        end
+        
+        return executeInternalStealAsync(prompt)
+    end
+
+    local function autoStealLoop()
+        if stealConnection then
+            stealConnection:Disconnect()
+            stealConnection = nil
+        end
+        if velocityConnection then
+            velocityConnection:Disconnect()
+            velocityConnection = nil
+        end
+        
+        if not CONFIG.AUTO_STEAL_ENABLED then
+            return
+        end
+        
+        velocityConnection = RunService.Heartbeat:Connect(function()
+            updatePlayerVelocity()
+        end)
+        
+        stealConnection = RunService.Heartbeat:Connect(function()
+            if not CONFIG.AUTO_STEAL_ENABLED then
+                return
+            end
+            
+            if #allAnimalsCache == 0 then
+                return
+            end
+            
+            local targetAnimal = getNearestAnimal()
+            
+            if not targetAnimal then
+                return
+            end
+            
+            if not shouldPreFire(targetAnimal) then
+                return
+            end
+            
+            if LastTargetUID ~= targetAnimal.uid then
+                LastTargetUID = targetAnimal.uid
+            end
+            
+            local prompt = findProximityPromptForAnimal(targetAnimal)
+            
+            if prompt then
+                attemptSteal(prompt)
+            end
+        end)
+    end
+
+    local function scanForAnimals()
+        allAnimalsCache = {}
+        
+        local plots = workspace:FindFirstChild("Plots")
+        if not plots then return end
+        
+        for _, plot in ipairs(plots:GetChildren()) do
+            local podiums = plot:FindFirstChild("AnimalPodiums")
+            if podiums then
+                for _, podium in ipairs(podiums:GetChildren()) do
+                    local hasAnimal = false
+                    for _, part in ipairs(podium:GetDescendants()) do
+                        if part:IsA("BasePart") and part.Name ~= "Base" and part.Name ~= "Spawn" then
+                            hasAnimal = true
+                            break
+                        end
+                    end
+                    
+                    if hasAnimal then
+                        table.insert(allAnimalsCache, {
+                            plot = plot.Name,
+                            slot = podium.Name,
+                            uid = plot.Name .. "_" .. podium.Name
+                        })
+                    end
+                end
+            end
+        end
+    end
+
+    local scanConnection
+    local function startAnimalScanner()
+        if scanConnection then
+            scanConnection:Disconnect()
+        end
+        
+        scanConnection = RunService.Heartbeat:Connect(function()
+            scanForAnimals()
+            task.wait(1)
+        end)
+    end
+
+    -- Initialize Auto Steal
+    if not game:IsLoaded() then
+        game.Loaded:Wait()
+    end
+
+    if not LocalPlayer.Character then
+        LocalPlayer.CharacterAdded:Wait()
+    end
+
+    task.spawn(startAnimalScanner)
+
+    -- Keep Auto Steal running based on toggle
+    RunService.Heartbeat:Connect(function()
+        if CONFIG.AUTO_STEAL_ENABLED then
+            if not stealConnection then
+                task.spawn(autoStealLoop)
+            end
+        else
+            if stealConnection then
+                stealConnection:Disconnect()
+                stealConnection = nil
+            end
+            if velocityConnection then
+                velocityConnection:Disconnect()
+                velocityConnection = nil
+            end
+        end
+    end)
+
+    -- Character respawn handlers for all functions
+    LocalPlayer.CharacterAdded:Connect(function()
+        task.wait(1)
+        
+        if speedBoostEnabled then
+            enableSpeedBoost()
+        end
+        
+        if speedWhileStealingEnabled then
+            enableSpeedWhileStealing()
+        end
+        
+        if spinbotEnabled then
+            enableSpinbot()
+        end
+        
+        if hitWhileStealingEnabled then
+            onHitWhileStealingToggle(true)
+        end
+        
+        if CONFIG.PLAYER_ESP_ENABLED then
+            startESP()
+        end
+        
+        if CONFIG.AUTO_MEDUSA_ENABLED then
+            onAutoMedusaToggle(true)
+        end
+        
+        if unwalkEnabled then
+            onUnwalkToggle(true)
+        end
+    end)
+
+    print("[HOOK HUB] Script loaded successfully!")
+else
+    -- Key check failed or Junkie check failed
+    game:GetService("Players").LocalPlayer:Kick("Invalid Key")
+end
